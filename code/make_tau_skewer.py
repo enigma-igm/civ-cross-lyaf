@@ -17,7 +17,7 @@ out_path = '/mnt/quasar/xinsheng/tau/'
 
 hdf5file = sim_path + 'z45.h5'
 ranovtfile = out_path + 'rand_skewers_' + zstr + '_ovt.fits'
-rantaufile = out_path + 'rand_skewers_' + zstr + '_ovt_tau.fits'
+rantaufile = out_path + 'rand_skewers_' + zstr + '_ovt_tau_new.fits'
 
 # generate ovt skewers
 ret = random_skewers(Nran, hdf5file, ranovtfile, seed=seed)  # ,Ng,rand)
@@ -40,5 +40,5 @@ params['seed'] = seed
 GAMMA_NOW = 0.1
 
 # generate ovt_tau skewers
-#retval = make_tau_skewers(params, skewers, rantaufile, DMAX, GAMMA_UVB=GAMMA_NOW, RESCALE=False, IMPOSE_EOS=False)
-retval = make_tau_skewers(params, skewers, rantaufile, DMAX, RESCALE=True, IMPOSE_EOS=False, rescale_redshift=4.5)
+retval = make_tau_skewers(params, skewers, rantaufile, DMAX, GAMMA_UVB=GAMMA_NOW, RESCALE=False, IMPOSE_EOS=False)
+#retval = make_tau_skewers(params, skewers, rantaufile, DMAX, RESCALE=True, IMPOSE_EOS=False, rescale_redshift=4.5)
