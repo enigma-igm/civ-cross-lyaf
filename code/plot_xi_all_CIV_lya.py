@@ -19,7 +19,7 @@ vmax_corr = 3000.
 #dv_corr = fwhm/sampling
 dv_corr = 5
 snr = None # or None for noiseless data
-npath = 1000
+npath = 10000
 seed = 1199 # only used if npath < len(skewers)
 rand = np.random.RandomState(seed)
 
@@ -27,7 +27,7 @@ rand = np.random.RandomState(seed)
 tau_metal_file_CIV = '/Users/xinsheng/civ-cross-lyaf/Nyx_output/tau/rand_skewers_z45_ovt_xciv_tau_R_0.80_logM_9.50.fits' # 'nyx_sim_data/rand_skewers_z45_ovt_tau_xciv_flux.fits'
 tau_metal_file_lya = '/Users/xinsheng/civ-cross-lyaf/Nyx_output/rand_skewers_z45_ovt_tau_new.fits'
 corr_outfile = '/Users/xinsheng/civ-cross-lyaf/output/rand_skewers_z45_ovt_xciv_corr_CIV_lya_1000.fits' # saving output correlation function
-compute_corr = True
+compute_corr = False
 
 if compute_corr:
 

@@ -49,9 +49,9 @@ alpha_data = 0.5
 #data_path = '/Users/xinsheng/XSWork/CIV/Nyx_output/'
 data_path = '/Users/xinsheng/'
 
-skewerfile_CIV = '/Users/xinsheng/XSWork/CIV/Nyx_output/tau/rand_skewers_z45_ovt_xciv_tau_R_1.00_logM_9.30.fits'
+skewerfile_CIV = '/Users/xinsheng/civ-cross-lyaf/Nyx_output/tau/rand_skewers_z45_ovt_xciv_tau_R_1.00_logM_9.30.fits'
 
-skewerfile = '/Users/xinsheng/XSWork/CIV/Nyx_output/rand_skewers_z45_ovt_tau.fits'
+skewerfile = '/Users/xinsheng/civ-cross-lyaf/Nyx_output/rand_skewers_z45_ovt_tau_CIV.fits'
 
 
 metal_par = Table.read(skewerfile, hdu=1)
@@ -63,7 +63,7 @@ metal_ske_CIV = Table.read(skewerfile_CIV, hdu=2)
 logM = float(skewerfile_CIV.split('logM_')[-1].split('.fits')[0])
 R_Mpc = float(skewerfile_CIV.split('R_')[-1].split('_logM')[0])
 logZ = -3.5
-savefig = '/Users/xinsheng/XSWork/CIV/figure/CIV_skewers.pdf'
+savefig = '/Users/xinsheng/XSWork/CIV/figure/CIV_skewers_new.pdf'
 #savefig = '/Users/xinsheng/XSWork/CIV/figure/skewers_R_%0.2f_logM_%0.2f.pdf' % (logM, R_Mpc)
 
 metal_ion = 'C IV'
