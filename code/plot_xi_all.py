@@ -8,7 +8,7 @@ import enigma.reion_forest.utils as reion_utils
 from astropy.table import Table
 import metal_corrfunc as mcf
 import time
-
+import pdb
 # parameters to set
 metal_ion = 'C IV'
 logZ = -3.5
@@ -19,14 +19,14 @@ vmax_corr = 3000.
 #dv_corr = fwhm/sampling
 dv_corr = 5
 snr = None # or None for noiseless data
-npath = 100
+npath = 10000
 seed = 1199 # only used if npath < len(skewers)
 rand = np.random.RandomState(seed)
 
 # input and output files
-tau_metal_file = '/Users/xinsheng/civ-cross-lyaf/Nyx_output/tau/rand_skewers_z45_ovt_xciv_tau_R_0.80_logM_9.50.fits' # 'nyx_sim_data/rand_skewers_z45_ovt_tau_xciv_flux.fits'
-corr_outfile = '/Users/xinsheng/civ-cross-lyaf/output/rand_skewers_z45_ovt_xciv_corr.fits' # saving output correlation function
-compute_corr = True
+tau_metal_file = '/Users/xinsheng/civ-cross-lyaf/Nyx_output/tau/rand_skewers_z45_ovt_xciv_tau_R_1.00_logM_9.30.fits' # 'nyx_sim_data/rand_skewers_z45_ovt_tau_xciv_flux.fits'
+corr_outfile = '/Users/xinsheng/civ-cross-lyaf/output/rand_skewers_z45_ovt_xciv_corr_1000.fits' # saving output correlation function
+compute_corr = False
 
 if compute_corr:
 
@@ -39,6 +39,7 @@ if compute_corr:
         skewers = skewers[indx]
 
     start = time.time()
+
     vel_mid, xi_mean_tot, xi_tot, npix_tot = mcf.compute_xi_all(params, skewers, logZ, fwhm, metal_ion, vmin_corr, vmax_corr, dv_corr, snr=snr, sampling=sampling)
     mcf.write_corrfunc(vel_mid, xi_tot, npix_tot, corr_outfile)
     end = time.time()
@@ -46,15 +47,11 @@ if compute_corr:
     print("Done computing 2PCF in %0.2f min" % ((end-start)/60.))
 
 else:
-    noiseless_corr = Table.read('/Users/xinsheng/civ-cross-lyaf/output/rand_skewers_z45_ovt_xciv_corr.fits')
-    vel_mid_noiseless = noiseless_corr['vel_mid'][0]
-    xi_tot_noiseless = noiseless_corr['xi_tot']
-    xi_mean_tot_noiseless = np.mean(xi_tot_noiseless, axis=0)
-
     outcorr = Table.read(corr_outfile)
     vel_mid = outcorr['vel_mid'][0]
     xi_tot = outcorr['xi_tot']
     xi_mean_tot = np.mean(xi_tot, axis=0)
+
 
     factor = 1.0
     plt.figure(figsize=(12,8))
@@ -71,4 +68,4 @@ else:
     plt.legend(frameon=False)
     plt.xlim([-50, 2000])
     plt.ylim([ymin, ymax])
-    plt.savefig('/Users/xinsheng/civ-cross-lyaf/output/coor.pdf')
+    plt.savefig('/Users/xinsheng/civ-cross-lyaf/output/coor_ori_CIV_10000.pdf')

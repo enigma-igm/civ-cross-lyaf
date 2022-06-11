@@ -1,6 +1,7 @@
 import sys
 sys.path.insert(0, "/Users/xinsheng/CIV_forest/")
 sys.path.insert(0, "/Users/xinsheng/enigma/enigma/reion_forest/")
+sys.path.insert(0,"/Users/xinsheng/civ-cross-lyaf/code")
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,6 +9,7 @@ import enigma.reion_forest.utils as reion_utils
 from astropy.table import Table
 import metal_corrfunc as mcf
 import time
+import CIV_lya_correlation as CIV_lya
 
 # parameters to set
 metal_ion = 'C IV'
@@ -24,9 +26,9 @@ seed = 1199 # only used if npath < len(skewers)
 rand = np.random.RandomState(seed)
 
 # input and output files
-tau_metal_file_CIV = '/Users/xinsheng/civ-cross-lyaf/Nyx_output/tau/rand_skewers_z45_ovt_xciv_tau_R_0.80_logM_9.50.fits' # 'nyx_sim_data/rand_skewers_z45_ovt_tau_xciv_flux.fits'
+tau_metal_file_CIV = '/Users/xinsheng/civ-cross-lyaf/Nyx_output/tau/rand_skewers_z45_ovt_xciv_tau_R_1.00_logM_9.30.fits' # 'nyx_sim_data/rand_skewers_z45_ovt_tau_xciv_flux.fits'
 tau_metal_file_lya = '/Users/xinsheng/civ-cross-lyaf/Nyx_output/rand_skewers_z45_ovt_tau_new.fits'
-corr_outfile = '/Users/xinsheng/civ-cross-lyaf/output/rand_skewers_z45_ovt_xciv_corr_CIV_lya_1000.fits' # saving output correlation function
+corr_outfile = '/Users/xinsheng/civ-cross-lyaf/output/corr_tau_R_1.00_logM_9.30_CIV_auto.fits' # saving output correlation function
 compute_corr = False
 
 if compute_corr:
@@ -44,18 +46,13 @@ if compute_corr:
         skewers_CIV = skewers_CIV[indx]
 
     start = time.time()
-    vel_mid, xi_mean_tot, xi_tot, npix_tot = mcf.compute_xi_all_CIV_lya(params_CIV, skewers_CIV, params_lya, skewers_lya, logZ, fwhm, metal_ion, vmin_corr, vmax_corr, dv_corr, snr=snr, sampling=sampling)
+    vel_mid, xi_mean_tot, xi_tot, npix_tot = CIV_lya.compute_xi_all_CIV_lya(params_CIV, skewers_CIV, params_lya, skewers_lya, logZ, fwhm, metal_ion, vmin_corr, vmax_corr, dv_corr, snr=snr, sampling=sampling)
     mcf.write_corrfunc(vel_mid, xi_tot, npix_tot, corr_outfile)
     end = time.time()
 
     print("Done computing 2PCF in %0.2f min" % ((end-start)/60.))
 
 else:
-    noiseless_corr = Table.read('/Users/xinsheng/civ-cross-lyaf/output/rand_skewers_z45_ovt_xciv_corr.fits')
-    vel_mid_noiseless = noiseless_corr['vel_mid'][0]
-    xi_tot_noiseless = noiseless_corr['xi_tot']
-    xi_mean_tot_noiseless = np.mean(xi_tot_noiseless, axis=0)
-
     outcorr = Table.read(corr_outfile)
     vel_mid = outcorr['vel_mid'][0]
     xi_tot = outcorr['xi_tot']
@@ -75,4 +72,4 @@ else:
     plt.legend(frameon=False)
     plt.xlim([-50, 2000])
     plt.ylim([ymin, ymax])
-    plt.savefig('/Users/xinsheng/civ-cross-lyaf/output/coor.pdf')
+    plt.savefig('/Users/xinsheng/civ-cross-lyaf/output/coor_CIV_tau_R_1.00_logM_9.30_auto.pdf')

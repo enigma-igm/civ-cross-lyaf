@@ -9,6 +9,9 @@ from matplotlib.ticker import AutoMinorLocator
 from astropy.table import Table
 import sys
 
+sys.path.insert(0,"/Users/xinsheng/civ-cross-lyaf/code")
+import CIV_lya_correlation as CIV_lya
+
 sys.path.insert(0, "/Users/xinsheng/enigma/enigma/reion_forest/")
 import enigma.reion_forest.utils as reion_utils
 
@@ -35,7 +38,7 @@ mpl.rcParams['xtick.minor.size'] = 4
 mpl.rcParams['ytick.major.size'] = 7
 mpl.rcParams['ytick.minor.size'] = 4
 
-fig, (ax1, ax2, ax3, ax4, ax5, ax6) = plt.subplots(6, figsize=(16, 20), sharex=True)
+fig, (ax1, ax2, ax3, ax5, ax6) = plt.subplots(5, figsize=(16, 20), sharex=True)
 fig.subplots_adjust(left=0.1, bottom=0.07, right=0.98, top=0.93, wspace=0, hspace=0.)
 
 xytick_size = 16
@@ -49,9 +52,9 @@ alpha_data = 0.5
 #data_path = '/Users/xinsheng/XSWork/CIV/Nyx_output/'
 data_path = '/Users/xinsheng/'
 
-skewerfile_create = '/Users/xinsheng/civ-cross-lyaf/Nyx_output/rand_skewers_z45_ovt_tau_new.fits'
+skewerfile_create = '/Users/xinsheng/civ-cross-lyaf/Nyx_output/tau/rand_skewers_z45_ovt_xciv_tau_R_0.80_logM_9.50.fits'
 
-skewerfile_origin = '/Users/xinsheng/civ-cross-lyaf/Nyx_output/rand_skewers_z45_ovt_tau_CIV.fits'
+skewerfile_origin = '/Users/xinsheng/civ-cross-lyaf/Nyx_output/tau/rand_skewers_z45_ovt_xciv_tau_R_0.80_logM_9.50.fits'
 
 
 metal_par = Table.read(skewerfile_create, hdu=1)
@@ -61,7 +64,7 @@ metal_par_CIV = Table.read(skewerfile_origin, hdu=1)
 metal_ske_CIV = Table.read(skewerfile_origin, hdu=2)
 
 logZ = -3.5
-savefig = '/Users/xinsheng/civ-cross-lyaf/figure/compare_skewers_new.pdf'
+savefig = '/Users/xinsheng/civ-cross-lyaf/figure/skewers_red_blue.pdf'
 #savefig = '/Users/xinsheng/XSWork/CIV/figure/skewers_R_%0.2f_logM_%0.2f.pdf' % (logM, R_Mpc)
 
 metal_ion = 'C IV'
@@ -82,11 +85,16 @@ print('random index', i)
 # creating the metal forest for random skewer 'i'
 v_lores, (ftot_lores, figm_lores, fcgm_lores), \
 v_hires, (ftot_hires, figm_hires, fcgm_hires), \
-(oden, T, x_metal), cgm_tup, tau_igm = reion_utils.create_lya_forest(metal_par, metal_ske[[i]], fwhm, sampling=sampling)
+(oden, T, v_los, x_metal), cgm_tup, tau_igm = CIV_lya.create_metal_forest_red(metal_par_CIV, metal_ske_CIV[[i]], logZ, fwhm, metal_ion, sampling=sampling)
 
 v_lores_CIV, (ftot_lores_CIV, figm_lores_CIV, fcgm_lores_CIV), \
 v_hires_CIV, (ftot_hires_CIV, figm_hires_CIV, fcgm_hires_CIV), \
-(oden_CIV, T_CIV, x_metal_CIV), cgm_tup_CIV, tau_igm_CIV = reion_utils.create_lya_forest(metal_par_CIV, metal_ske_CIV[[i]], fwhm, sampling=sampling)
+(oden_CIV, T_CIV, v_los, x_metal_CIV), cgm_tup_CIV, tau_igm_CIV = CIV_lya.create_metal_forest_blue(metal_par_CIV, metal_ske_CIV[[i]], logZ, fwhm, metal_ion, sampling=sampling)
+
+v_lores_C, (ftot_lores_C, figm_lores_C, fcgm_lores_C), \
+v_hires_C, (ftot_hires_C, figm_hires_C, fcgm_hires_C), \
+(oden_C, T_C, v_los, x_metal_C), cgm_tup_C, tau_igm_C = CIV_lya.create_metal_forest_tau(metal_par_CIV, metal_ske_CIV[[i]], logZ, fwhm, metal_ion, sampling=sampling)
+
 
 tau = metal_ske['TAU'][i]
 vmin, vmax = v_hires.min(), v_hires.max()
@@ -99,8 +107,8 @@ noise_CIV = np.random.normal(0.0, 1.0/snr, ftot_lores_CIV[0].flatten().shape)
 ftot_lores_noise_CIV = ftot_lores_CIV[0] + noise_CIV
 
 #### oden plot ####
-ax1.plot(v_hires, oden[0], c='k', label = 'created lya, i = %d' % i)
-ax1.plot(v_hires_CIV, oden_CIV[0], c='r', label = 'original lya for CIV')
+ax1.plot(v_hires, oden[0], c='k', label = 'red, i = %d' % i)
+ax1.plot(v_hires_CIV, oden_CIV[0], '--', c='r', label = 'blue')
 #ax1.set_ylabel('Overdensity', fontsize=xylabel_fontsize)
 ax1.set_ylabel(r'$\Delta$ [$\rho/\bar{\rho}$]', fontsize=xylabel_fontsize)
 ax1.tick_params(top=True, which='both', labelsize=xytick_size)
@@ -113,8 +121,9 @@ ax1.legend()
 
 ### tau plot ###
 
-ax2.plot(v_hires_CIV, tau_igm_CIV[0], c='r',label = 'original lya')
-ax2.plot(v_hires, tau_igm[0], '--',c='k', label = 'created lya, i = %d' % i)
+ax2.plot(v_hires_CIV, tau_igm_CIV[0], c='r',label = 'blue')
+ax2.plot(v_hires, tau_igm[0], '--',c='k', label = 'red, i = %d' % i)
+ax2.plot(v_hires, tau_igm_C[0], '-.',c='y', label = 'total, i = %d' % i)
 #ax1.set_ylabel('Overdensity', fontsize=xylabel_fontsize)
 ax2.set_ylabel(r'$\tau$', fontsize=xylabel_fontsize)
 ax2.tick_params(top=True, which='both', labelsize=xytick_size)
@@ -131,15 +140,15 @@ print('random index', i)
 # creating the metal forest for random skewer 'i'
 v_lores, (ftot_lores, figm_lores, fcgm_lores), \
 v_hires, (ftot_hires, figm_hires, fcgm_hires), \
-(oden, T, x_metal), cgm_tup, tau_igm = reion_utils.create_lya_forest(metal_par, metal_ske[[i]], fwhm, sampling=sampling)
+(oden, T, v_los, x_metal), cgm_tup, tau_igm = CIV_lya.create_metal_forest_red(metal_par_CIV, metal_ske_CIV[[i]], logZ, fwhm, metal_ion, sampling=sampling)
 
 v_lores_CIV, (ftot_lores_CIV, figm_lores_CIV, fcgm_lores_CIV), \
 v_hires_CIV, (ftot_hires_CIV, figm_hires_CIV, fcgm_hires_CIV), \
-(oden_CIV, T_CIV, x_metal_CIV), cgm_tup_CIV, tau_igm_CIV = reion_utils.create_lya_forest(metal_par_CIV, metal_ske_CIV[[i]], fwhm, sampling=sampling)
+(oden_CIV, T_CIV, v_los, x_metal_CIV), cgm_tup_CIV, tau_igm_CIV = CIV_lya.create_metal_forest_blue(metal_par_CIV, metal_ske_CIV[[i]], logZ, fwhm, metal_ion, sampling=sampling)
 
 
-ax3.plot(v_hires_CIV, tau_igm_CIV[0], c='r',label = 'original lya')
-ax3.plot(v_hires, tau_igm[0], '--',c='k', label = 'created lya, i = %d' % i)
+ax3.plot(v_hires_CIV, tau_igm_CIV[0], c='r',label = 'blue')
+ax3.plot(v_hires, tau_igm[0], '--',c='k', label = 'red, i = %d' % i)
 #ax1.set_ylabel('Overdensity', fontsize=xylabel_fontsize)
 ax3.set_ylabel(r'$\tau$', fontsize=xylabel_fontsize)
 ax3.tick_params(top=True, which='both', labelsize=xytick_size)
@@ -148,32 +157,6 @@ ax3.xaxis.set_minor_locator(AutoMinorLocator())
 ax3.yaxis.set_minor_locator(AutoMinorLocator())
 ax3.set_xlim([vmin, vmax])
 ax3.set_xlim([oden_min, oden_max])
-
-
-i = 6000
-    #i = np.random.randint(0, len(metal_ske))
-    # other good los: 4197, 7504, 1061
-print('random index', i)
-# creating the metal forest for random skewer 'i'
-v_lores, (ftot_lores, figm_lores, fcgm_lores), \
-v_hires, (ftot_hires, figm_hires, fcgm_hires), \
-(oden, T, x_metal), cgm_tup, tau_igm = reion_utils.create_lya_forest(metal_par, metal_ske[[i]], fwhm, sampling=sampling)
-
-v_lores_CIV, (ftot_lores_CIV, figm_lores_CIV, fcgm_lores_CIV), \
-v_hires_CIV, (ftot_hires_CIV, figm_hires_CIV, fcgm_hires_CIV), \
-(oden_CIV, T_CIV, x_metal_CIV), cgm_tup_CIV, tau_igm_CIV = reion_utils.create_lya_forest(metal_par_CIV, metal_ske_CIV[[i]], fwhm, sampling=sampling)
-
-
-ax4.plot(v_hires_CIV, tau_igm_CIV[0], c='r' ,label = 'original lya')
-ax4.plot(v_hires, tau_igm[0], '--',c='k', label = 'created lya, i = %d' % i)
-#ax1.set_ylabel('Overdensity', fontsize=xylabel_fontsize)
-ax4.set_ylabel(r'$\tau$', fontsize=xylabel_fontsize)
-ax4.tick_params(top=True, which='both', labelsize=xytick_size)
-ax4.legend()
-ax4.xaxis.set_minor_locator(AutoMinorLocator())
-ax4.yaxis.set_minor_locator(AutoMinorLocator())
-ax4.set_xlim([vmin, vmax])
-ax4.set_xlim([oden_min, oden_max])
 
 #### temp plot ####
 #ax2.plot(v_hires, T[0], c='k')
@@ -237,24 +220,24 @@ ftot_lores_noise_CIV = ftot_lores_CIV[0] + noise_CIV
 
 #### flux plot ####
 #ax5.plot(ori_v_hires, ori_ftot_hires[0], alpha=0.7, label='hires (uniform Z)')#, drawstyle='steps-mid', alpha=0.6, zorder=10, color='red')
-ax5.plot(v_hires, ftot_hires[0], 'k', label='Perfect spectrum for created lya', drawstyle='steps-mid')#, alpha=0.6, zorder=10, color='red')
-ax5.plot(v_lores, ftot_lores_noise, label='FWHM=%0.1f km/s; SNR=%0.1f; lya' % (fwhm, snr), c='r', alpha=alpha_data, zorder=1, drawstyle='steps-mid')
+ax5.plot(v_hires, ftot_hires[0], 'k', label='Perfect spectrum for CIV red', drawstyle='steps-mid')#, alpha=0.6, zorder=10, color='red')
+ax5.plot(v_lores, ftot_lores_noise, label='FWHM=%0.1f km/s; SNR=%0.1f;' % (fwhm, snr), c='r', alpha=alpha_data, zorder=1, drawstyle='steps-mid')
 ax5.set_xlabel('v [km/s]', fontsize=xylabel_fontsize)
 ax5.set_ylabel(r'F$_{\mathrm{H}}$', fontsize=xylabel_fontsize)
 ax5.legend(fontsize=legend_fontsize, ncol=2, loc=1)
 ax5.set_xlim([vmin, vmax])
-ax5.set_ylim([-0.2, 1.1])
+ax5.set_ylim([0.9, 1.12])
 ax5.tick_params(top=True, which='both', labelsize=xytick_size)
 ax5.xaxis.set_minor_locator(AutoMinorLocator())
 ax5.yaxis.set_minor_locator(AutoMinorLocator())
 
-ax6.plot(v_hires_CIV, ftot_hires_CIV[0], 'k', label='Perfect spectrum for original lya', drawstyle='steps-mid')#, alpha=0.6, zorder=10, color='red')
-ax6.plot(v_lores_CIV, ftot_lores_noise_CIV, label='FWHM=%0.1f km/s; SNR=%0.1f; CIV' % (fwhm, snr), c='r', alpha=alpha_data, zorder=1, drawstyle='steps-mid')
+ax6.plot(v_hires_CIV, ftot_hires_CIV[0], 'k', label='Perfect spectrum for CIV blue', drawstyle='steps-mid')#, alpha=0.6, zorder=10, color='red')
+ax6.plot(v_lores_CIV, ftot_lores_noise_CIV, label='FWHM=%0.1f km/s; SNR=%0.1f;' % (fwhm, snr), c='r', alpha=alpha_data, zorder=1, drawstyle='steps-mid')
 ax6.set_xlabel('v [km/s]', fontsize=xylabel_fontsize)
 ax6.set_ylabel(r'F$_{\mathrm{H}}$', fontsize=xylabel_fontsize)
 ax6.legend(fontsize=legend_fontsize, ncol=2, loc=1)
 ax6.set_xlim([vmin, vmax])
-ax6.set_ylim([-0.2, 1.1])
+ax5.set_ylim([0.9, 1.12])
 ax6.tick_params(top=True, which='both', labelsize=xytick_size)
 ax6.xaxis.set_minor_locator(AutoMinorLocator())
 ax6.yaxis.set_minor_locator(AutoMinorLocator())
