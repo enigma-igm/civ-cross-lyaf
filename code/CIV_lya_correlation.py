@@ -2,9 +2,11 @@
 #### I move all of my modified functions here in order to better organize them
 
 import sys
+
 '''
 xi_sum_CIV_lya
 compute_xi_all_CIV_lya
+compute_xi_all_CIV_CIV
 compute_xi_CIV_lya
 create_lya_forest
 create_metal_forest_tau
@@ -45,6 +47,8 @@ import halos_skewers
 from enigma.reion_forest.utils import *
 from metal_corrfunc import *
 
+#import pdb
+
 def xi_sum_CIV_lya(ind, dist, delta_f_CIV, delta_f_lya , gpm,v_lo, v_hi, nskew, npix_forest):
 
     npix_sum = np.zeros(nskew, dtype=int)
@@ -63,37 +67,46 @@ def xi_sum_CIV_lya(ind, dist, delta_f_CIV, delta_f_lya , gpm,v_lo, v_hi, nskew, 
     return xi, npix_sum
 
 def compute_xi_all_CIV_lya(params_CIV, skewers_CIV, params_lya, skewers_lya, logZ, fwhm, metal_ion, vmin_corr, vmax_corr, dv_corr, snr=None, sampling=None, \
-                   cgm_dict=None, metal_dndz_func=None, cgm_seed=None, want_hires=True):
-
+                   cgm_dict=None, metal_dndz_func=None, cgm_seed=None, want_hires=True, type = 'normal'):
+# '''
+# type: normal: calculate the cross-correlation between CIV and lya
+#       blue: calculate the cross-correlation between CIV blue line and lya
+#       red: calculate the cross-correlation between CIV red line and lya
+# '''
     # similar as enigma.reion_forest.fig_corrfunc.py
     # if sampling not provided, then default to sampling=3
-
-
-    # vel_lores_CIV, (flux_lores_tot_CIV, flux_lores_igm_CIV, flux_lores_cgm_CIV), \
-    # vel_hires_CIV, (flux_hires_tot_CIV, flux_hires_igm_CIV, flux_hires_cgm_CIV), \
-    # (oden_CIV, v_los_CIV, T_CIV, x_metal_CIV), cgm_tup_CIV, tau_igm_CIV = create_metal_forest(params_CIV, skewers_CIV, logZ, fwhm, metal_ion, sampling=sampling, \
-    #                                                                      cgm_dict=cgm_dict, metal_dndz_func=metal_dndz_func, seed=cgm_seed)
-    #
-    # vel_lores_lya, (flux_lores_tot_lya, flux_lores_igm_lya, flux_lores_cgm_lya), \
-    # vel_hires_lya, (flux_hires_tot_lya, flux_hires_igm_lya, flux_hires_cgm_lya), \
-    # (oden_lya, T_lya, x_metal_lya), cgm_tup_lya, tau_igm_lya = create_lya_forest(params_lya, skewers_lya, fwhm, sampling=sampling)
-
-# test only
-
-    vel_lores_CIV, (flux_lores_tot_CIV, flux_lores_igm_CIV, flux_lores_cgm_CIV), \
-    vel_hires_CIV, (flux_hires_tot_CIV, flux_hires_igm_CIV, flux_hires_cgm_CIV), \
-    (oden_CIV, v_los_CIV, T_lya,x_metal_CIV), cgm_tup_CIV = reion_utils.create_metal_forest(params_CIV, skewers_CIV, logZ, fwhm, metal_ion, sampling=sampling, \
-                                                                          cgm_dict=cgm_dict, metal_dndz_func=metal_dndz_func, seed=cgm_seed)
+    if type == 'normal':
+        vel_lores_CIV, (flux_lores_tot_CIV, flux_lores_igm_CIV, flux_lores_cgm_CIV), \
+        vel_hires_CIV, (flux_hires_tot_CIV, flux_hires_igm_CIV, flux_hires_cgm_CIV), \
+        (oden_CIV, v_los_CIV, T_CIV, x_metal_CIV), cgm_tup_CIV = create_metal_forest(params_CIV, skewers_CIV, logZ, fwhm, metal_ion, sampling=sampling, \
+                                                                             cgm_dict=cgm_dict, metal_dndz_func=metal_dndz_func, seed=cgm_seed)
+    elif type == 'red':
+        vel_lores_CIV, (flux_lores_tot_CIV, flux_lores_igm_CIV, flux_lores_cgm_CIV), \
+        vel_hires_CIV, (flux_hires_tot_CIV, flux_hires_igm_CIV, flux_hires_cgm_CIV), \
+        (oden_CIV, v_los_CIV, T_CIV, x_metal_CIV), cgm_tup_CIV, tau_CIV = create_metal_forest_red(params_CIV, skewers_CIV, logZ, fwhm, metal_ion, sampling=sampling, \
+                                                                             cgm_dict=cgm_dict, metal_dndz_func=metal_dndz_func, seed=cgm_seed)
+    elif type == 'blue':
+        vel_lores_CIV, (flux_lores_tot_CIV, flux_lores_igm_CIV, flux_lores_cgm_CIV), \
+        vel_hires_CIV, (flux_hires_tot_CIV, flux_hires_igm_CIV, flux_hires_cgm_CIV), \
+        (oden_CIV, v_los_CIV, T_CIV, x_metal_CIV), cgm_tup_CIV, tau_CIV = create_metal_forest_blue(params_CIV, skewers_CIV, logZ, fwhm, metal_ion, sampling=sampling, \
+                                                                             cgm_dict=cgm_dict, metal_dndz_func=metal_dndz_func, seed=cgm_seed)
 
     vel_lores_lya, (flux_lores_tot_lya, flux_lores_igm_lya, flux_lores_cgm_lya), \
     vel_hires_lya, (flux_hires_tot_lya, flux_hires_igm_lya, flux_hires_cgm_lya), \
-    (oden_lya, v_los_lya, T_lya, x_metal_lya),cgm_tup_CIV = reion_utils.create_metal_forest(params_CIV, skewers_CIV, logZ, fwhm, metal_ion, sampling=sampling, \
-                                                                          cgm_dict=cgm_dict, metal_dndz_func=metal_dndz_func, seed=cgm_seed)
+    (oden_lya, T_lya, x_metal_lya), cgm_tup_lya, tau_igm_lya = create_lya_forest(params_lya, skewers_lya, fwhm, sampling=sampling)
 
-    flux_hires_tot_lya = flux_lores_tot_lya
-    vel_hires_lya = vel_lores_lya
-    flux_hires_tot_CIV = flux_lores_tot_CIV
-    vel_hires_CIV = vel_lores_CIV
+# test only
+
+    # vel_lores_CIV, (flux_lores_tot_CIV, flux_lores_igm_CIV, flux_lores_cgm_CIV), \
+    # vel_hires_CIV, (flux_hires_tot_CIV, flux_hires_igm_CIV, flux_hires_cgm_CIV), \
+    # (oden_CIV, v_los_CIV, T_lya,x_metal_CIV), cgm_tup_CIV = reion_utils.create_metal_forest(params_CIV, skewers_CIV, logZ, fwhm, metal_ion, sampling=sampling, \
+    #                                                                       cgm_dict=cgm_dict, metal_dndz_func=metal_dndz_func, seed=cgm_seed)
+    #
+    # vel_lores_lya, (flux_lores_tot_lya, flux_lores_igm_lya, flux_lores_cgm_lya), \
+    # vel_hires_lya, (flux_hires_tot_lya, flux_hires_igm_lya, flux_hires_cgm_lya), \
+    # (oden_lya, v_los_lya, T_lya, x_metal_lya),cgm_tup_CIV = reion_utils.create_metal_forest(params_CIV, skewers_CIV, logZ, fwhm, metal_ion, sampling=sampling, \
+    #                                                                       cgm_dict=cgm_dict, metal_dndz_func=metal_dndz_func, seed=cgm_seed)
+
     # Compute mean flux and delta_flux
     mean_flux_tot_CIV = np.mean(flux_hires_tot_CIV)
     delta_f_tot_CIV = (flux_hires_tot_CIV - mean_flux_tot_CIV)/mean_flux_tot_CIV
@@ -107,6 +120,65 @@ def compute_xi_all_CIV_lya(params_CIV, skewers_CIV, params_lya, skewers_lya, log
 
     # xi_tot is an array of 2PCF of each skewer
     (vel_mid, xi_tot, npix_tot, xi_zero_lag_tot) = compute_xi_CIV_lya(delta_f_tot_CIV, delta_f_tot_lya, vel_hires_CIV, vel_hires_lya,vmin_corr, vmax_corr, dv_corr)
+    xi_mean_tot = np.mean(xi_tot, axis=0) # 2PCF averaged from all the skewers, i.e the final quoted 2PCF
+
+    return vel_mid, xi_mean_tot, xi_tot, npix_tot
+
+
+def compute_xi_all_CIV_CIV(params_1, skewers_1, params_2, skewers_2, logZ, fwhm, metal_ion, vmin_corr, vmax_corr, dv_corr, snr = None, sampling=None, \
+                   cgm_dict=None, metal_dndz_func=None, cgm_seed=None, want_hires=True, type='normal'):
+# '''
+# type: normal: calculate the auto-correlation of CIV
+#       red: calculate the auto-correlation of CIV red and red
+#       blue: calculate the auto-correlation of CIV blue and blue
+# '''
+    # similar as enigma.reion_forest.fig_corrfunc.py
+    # if sampling not provided, then default to sampling=3
+    if type == 'normal':
+        vel_lores_1, (flux_lores_tot_1, flux_lores_igm_1, flux_lores_cgm_1), \
+        vel_hires_1, (flux_hires_tot_1, flux_hires_igm_1, flux_hires_cgm_1), \
+        (oden_1, v_los_1, T_1, x_metal_1), cgm_tup_1 = create_metal_forest(params_1, skewers_1, logZ, fwhm, metal_ion, sampling=sampling, \
+                                                                              cgm_dict=cgm_dict, metal_dndz_func=metal_dndz_func, seed=cgm_seed)
+
+        vel_lores_2, (flux_lores_tot_2, flux_lores_igm_2, flux_lores_cgm_2), \
+        vel_hires_2, (flux_hires_tot_2, flux_hires_igm_2, flux_hires_cgm_2), \
+        (oden_2, v_los_2, T_2, x_metal_2), cgm_tup_2 = create_metal_forest(params_2, skewers_2, logZ, fwhm, metal_ion, sampling=sampling, \
+                                                                              cgm_dict=cgm_dict, metal_dndz_func=metal_dndz_func, seed=cgm_seed)
+
+    if type == 'blue':
+        vel_lores_1, (flux_lores_tot_1, flux_lores_igm_1, flux_lores_cgm_1), \
+        vel_hires_1, (flux_hires_tot_1, flux_hires_igm_1, flux_hires_cgm_1), \
+        (oden_1, v_los_1, T_1, x_metal_1), cgm_tup_1, tau_1 = create_metal_forest_blue(params_1, skewers_1, logZ, fwhm, metal_ion, sampling=sampling, \
+                                                                              cgm_dict=cgm_dict, metal_dndz_func=metal_dndz_func, seed=cgm_seed)
+
+        vel_lores_2, (flux_lores_tot_2, flux_lores_igm_2, flux_lores_cgm_2), \
+        vel_hires_2, (flux_hires_tot_2, flux_hires_igm_2, flux_hires_cgm_2), \
+        (oden_2, v_los_2, T_2, x_metal_2), cgm_tup_2, tau_2 = create_metal_forest_blue(params_2, skewers_2, logZ, fwhm, metal_ion, sampling=sampling, \
+                                                                              cgm_dict=cgm_dict, metal_dndz_func=metal_dndz_func, seed=cgm_seed)
+    if type == 'red':
+        vel_lores_1, (flux_lores_tot_1, flux_lores_igm_1, flux_lores_cgm_1), \
+        vel_hires_1, (flux_hires_tot_1, flux_hires_igm_1, flux_hires_cgm_1), \
+        (oden_1, v_los_1, T_1, x_metal_1), cgm_tup_1, tau_1 = create_metal_forest_red(params_1, skewers_1, logZ, fwhm, metal_ion, sampling=sampling, \
+                                                                              cgm_dict=cgm_dict, metal_dndz_func=metal_dndz_func, seed=cgm_seed)
+
+        vel_lores_2, (flux_lores_tot_2, flux_lores_igm_2, flux_lores_cgm_2), \
+        vel_hires_2, (flux_hires_tot_2, flux_hires_igm_2, flux_hires_cgm_2), \
+        (oden_2, v_los_2, T_2, x_metal_2), cgm_tup_2, tau_2 = create_metal_forest_red(params_2, skewers_2, logZ, fwhm, metal_ion, sampling=sampling, \
+                                                                              cgm_dict=cgm_dict, metal_dndz_func=metal_dndz_func, seed=cgm_seed)
+
+    # Compute mean flux and delta_flux
+    mean_flux_tot_1 = np.mean(flux_hires_tot_1)
+    delta_f_tot_1 = (flux_hires_tot_1 - mean_flux_tot_1)/mean_flux_tot_1
+    print('mean flux of CIV:', mean_flux_tot_1)
+    print('mean delta_flux of CIV:', np.mean(delta_f_tot_1))
+
+    mean_flux_tot_2 = np.mean(flux_hires_tot_2)
+    delta_f_tot_2 = (flux_hires_tot_2 - mean_flux_tot_2)/mean_flux_tot_2
+    print('mean flux of CIV:', mean_flux_tot_2)
+    print('mean delta_flux of CIV:', np.mean(delta_f_tot_2))
+
+    # xi_tot is an array of 2PCF of each skewer
+    (vel_mid, xi_tot, npix_tot, xi_zero_lag_tot) = compute_xi_CIV_lya(delta_f_tot_1, delta_f_tot_2, vel_hires_1, vel_hires_2, vmin_corr, vmax_corr, dv_corr)
     xi_mean_tot = np.mean(xi_tot, axis=0) # 2PCF averaged from all the skewers, i.e the final quoted 2PCF
 
     return vel_mid, xi_mean_tot, xi_tot, npix_tot
