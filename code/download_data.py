@@ -12,8 +12,11 @@ data_pre_prim = "rand_skewers_z45_ovt_xciv_tau_R_"
 data_mid_prim = "_logM_"
 data_post_prim = ".fits"
 
-tau_R_range = np.linspace(1.0,2.0,num = 3)
-logM_range = np.linspace(9.0,9.6,num = 3)
+# tau_R_range = np.linspace(1.0,2.0,num = 3)
+# logM_range = np.linspace(9.0,9.6,num = 3)
+
+tau_R_range = [0.5,1.1,2.5]
+logM_range = [9.5]
 
 for n in tau_R_range:
     for m in logM_range:

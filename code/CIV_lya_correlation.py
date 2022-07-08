@@ -12,6 +12,8 @@ create_lya_forest
 create_metal_forest_tau
 create_metal_forest_red
 create_metal_forest_blue
+get_fvfm
+calc_igm_Zeff
 '''
 
 sys.path.insert(0, "/Users/xinsheng/CIV_forest/")
@@ -767,3 +769,29 @@ def create_metal_forest_blue(params, skewers, logZ, fwhm, metal_ion, z=None, sam
 
     return vel_lores, (flux_tot_lores, flux_igm_lores, flux_cgm_lores), \
            vel_hires, (flux_tot_hires, flux_igm_hires, flux_cgm_hires), (oden, v_los, T, x_metal), cgm_tuple, tau_plot
+
+def get_fvfm(logM_want, R_want, fvfm_file='/Users/xinsheng/civ-cross-lyaf/Nyx_output/fvfm_all.fits'):
+    fvfm = Table.read(fvfm_file)
+    logM_all = np.round(fvfm['logM'], 2)
+    R_all = np.round(np.array(fvfm['R_Mpc']), 2)
+    k = np.where((logM_all == logM_want) & (R_all == R_want))[0]
+    fv_want = (fvfm['fv'][k])[0]  # the [0] is just to extract the value from astropy column
+    fm_want = (fvfm['fm'][k])[0]
+    return fv_want, fm_want
+
+def calc_igm_Zeff(fm, logZ_fid=-3.5):
+    # calculates effective metallicity
+
+    sol = labsol.SolarAbund()
+    logZ_sol = sol.get_ratio('C/H') # same as sol['C'] - 12.0
+    nC_nH_sol = 10**(logZ_sol)
+
+    nH_bar = 3.1315263992114194e-05 # from skewerfile
+    Z_fid = 10 ** (logZ_fid)
+    nC_nH_fid = Z_fid * nC_nH_sol
+    nC = nH_bar * nC_nH_fid * fm
+
+    logZ_eff = np.log10(nC / nH_bar) - logZ_sol
+    logZ_jfh = np.log10(10**(logZ_fid) * fm)
+
+    return logZ_eff
