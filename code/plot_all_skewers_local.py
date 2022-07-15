@@ -20,6 +20,9 @@ from astropy.cosmology import FlatLambdaCDM
 from astropy import units as u
 import halos_skewers
 
+sys.path.insert(0,"/Users/xinsheng/civ-cross-lyaf/code")
+import CIV_lya_correlation as CIV_lya
+
 # TODO: Plot enrichment topology (i.e. mask skewer in the xciv panel) and Skewer of N_CIV.
 
 ### Figure settings
@@ -84,11 +87,11 @@ print('random index', i)
 # creating the metal forest for random skewer 'i'
 v_lores, (ftot_lores, figm_lores, fcgm_lores), \
 v_hires, (ftot_hires, figm_hires, fcgm_hires), \
-(oden, T, x_metal), cgm_tup, tau_igm = reion_utils.create_lya_forest(metal_par, metal_ske[[i]], fwhm, sampling=sampling)
+(oden, T, x_metal), cgm_tup, tau_igm = CIV_lya.create_lya_forest(metal_par, metal_ske[[i]], fwhm, sampling=sampling)
 
 v_lores_CIV, (ftot_lores_CIV, figm_lores_CIV, fcgm_lores_CIV), \
 v_hires_CIV, (ftot_hires_CIV, figm_hires_CIV, fcgm_hires_CIV), \
-(oden_CIV, v_los_CIV, T_CIV, x_metal_CIV), cgm_tup_CIV, tau_CIV = reion_utils.create_metal_forest_tau(metal_par_CIV, metal_ske_CIV[[i]], logZ, fwhm, metal_ion, sampling=sampling)
+(oden_CIV, v_los_CIV, T_CIV, x_metal_CIV), cgm_tup_CIV, tau_CIV = CIV_lya.create_metal_forest_tau(metal_par_CIV, metal_ske_CIV[[i]], logZ, fwhm, metal_ion, sampling=sampling)
 
 # # ~0.00014 sec to generate one skewer
 
@@ -114,8 +117,7 @@ noise_CIV = np.random.normal(0.0, 1.0/snr, ftot_lores_CIV[0].flatten().shape)
 ftot_lores_noise_CIV = ftot_lores_CIV[0] + noise_CIV
 
 #### oden plot ####
-ax1.plot(v_hires, oden[0], c='k', label = 'Lya')
-ax1.plot(v_hires_CIV, oden_CIV[0], c='r', label = 'CIV')
+ax1.plot(v_hires_CIV, oden_CIV[0], c='r')
 #ax1.set_ylabel('Overdensity', fontsize=xylabel_fontsize)
 ax1.set_ylabel(r'$\Delta$ [$\rho/\bar{\rho}$]', fontsize=xylabel_fontsize)
 ax1.tick_params(top=True, which='both', labelsize=xytick_size)
@@ -162,7 +164,7 @@ ax4.tick_params(top=True, which='both', labelsize=xytick_size)
 ax4.xaxis.set_minor_locator(AutoMinorLocator())
 ax4.yaxis.set_minor_locator(AutoMinorLocator())
 
-ax4.annotate('log(M)={:5.2f} '.format(logM) + r'M$_{\odot}$, ' + 'R={:5.2f} cMpc, '.format(R_Mpc) + '[C/H]=${:5.2f}$'.format(logZ), \
+ax5.annotate('log(M)={:5.2f} '.format(logM) + r'M$_{\odot}$, ' + 'R={:5.2f} cMpc, '.format(R_Mpc) + '[C/H]=${:5.2f}$'.format(logZ), \
              xy=(500, 1.185), xytext=(500, 1.085), textcoords='data', xycoords='data', annotation_clip=False, fontsize=legend_fontsize)
 ax5.plot(v_hires_CIV, ftot_hires_CIV[0], 'k', label='Perfect spectrum for CIV', drawstyle='steps-mid')#, alpha=0.6, zorder=10, color='red')
 ax5.plot(v_lores_CIV, ftot_lores_noise_CIV, label='FWHM=%0.1f km/s; SNR=%0.1f; CIV' % (fwhm, snr), c='r', alpha=alpha_data, zorder=1, drawstyle='steps-mid')

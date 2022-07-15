@@ -38,7 +38,7 @@ mpl.rcParams['xtick.minor.size'] = 4
 mpl.rcParams['ytick.major.size'] = 7
 mpl.rcParams['ytick.minor.size'] = 4
 
-fig, (ax1, ax2, ax3, ax5, ax6) = plt.subplots(5, figsize=(16, 20), sharex=True)
+fig, (ax1, ax2, ax5, ax6) = plt.subplots(4, figsize=(16, 20), sharex=True)
 fig.subplots_adjust(left=0.1, bottom=0.07, right=0.98, top=0.93, wspace=0, hspace=0.)
 
 xytick_size = 16
@@ -107,8 +107,7 @@ noise_CIV = np.random.normal(0.0, 1.0/snr, ftot_lores_CIV[0].flatten().shape)
 ftot_lores_noise_CIV = ftot_lores_CIV[0] + noise_CIV
 
 #### oden plot ####
-ax1.plot(v_hires, oden[0], c='k', label = 'red, i = %d' % i)
-ax1.plot(v_hires_CIV, oden_CIV[0], '--', c='r', label = 'blue')
+ax1.plot(v_hires, oden[0], c='k', label = 'i = %d' % i)
 #ax1.set_ylabel('Overdensity', fontsize=xylabel_fontsize)
 ax1.set_ylabel(r'$\Delta$ [$\rho/\bar{\rho}$]', fontsize=xylabel_fontsize)
 ax1.tick_params(top=True, which='both', labelsize=xytick_size)
@@ -121,9 +120,9 @@ ax1.legend()
 
 ### tau plot ###
 
-ax2.plot(v_hires_CIV, tau_igm_CIV[0], c='r',label = 'blue')
-ax2.plot(v_hires, tau_igm[0], '--',c='k', label = 'red, i = %d' % i)
-ax2.plot(v_hires, tau_igm_C[0], '-.',c='y', label = 'total, i = %d' % i)
+ax2.plot(v_hires_CIV, tau_igm_CIV[0], c='r',label = 'blue, i = %d' % i)
+ax2.plot(v_hires, tau_igm[0], '--',c='k', label = 'red')
+ax2.plot(v_hires, tau_igm_C[0], '-.',c='y', label = 'total')
 #ax1.set_ylabel('Overdensity', fontsize=xylabel_fontsize)
 ax2.set_ylabel(r'$\tau$', fontsize=xylabel_fontsize)
 ax2.tick_params(top=True, which='both', labelsize=xytick_size)
@@ -133,30 +132,34 @@ ax2.yaxis.set_minor_locator(AutoMinorLocator())
 ax2.set_xlim([vmin, vmax])
 ax2.set_xlim([oden_min, oden_max])
 
-i = 4000
-    #i = np.random.randint(0, len(metal_ske))
-    # other good los: 4197, 7504, 1061
-print('random index', i)
-# creating the metal forest for random skewer 'i'
-v_lores, (ftot_lores, figm_lores, fcgm_lores), \
-v_hires, (ftot_hires, figm_hires, fcgm_hires), \
-(oden, T, v_los, x_metal), cgm_tup, tau_igm = CIV_lya.create_metal_forest_red(metal_par_CIV, metal_ske_CIV[[i]], logZ, fwhm, metal_ion, sampling=sampling)
-
-v_lores_CIV, (ftot_lores_CIV, figm_lores_CIV, fcgm_lores_CIV), \
-v_hires_CIV, (ftot_hires_CIV, figm_hires_CIV, fcgm_hires_CIV), \
-(oden_CIV, T_CIV, v_los, x_metal_CIV), cgm_tup_CIV, tau_igm_CIV = CIV_lya.create_metal_forest_blue(metal_par_CIV, metal_ske_CIV[[i]], logZ, fwhm, metal_ion, sampling=sampling)
-
-
-ax3.plot(v_hires_CIV, tau_igm_CIV[0], c='r',label = 'blue')
-ax3.plot(v_hires, tau_igm[0], '--',c='k', label = 'red, i = %d' % i)
-#ax1.set_ylabel('Overdensity', fontsize=xylabel_fontsize)
-ax3.set_ylabel(r'$\tau$', fontsize=xylabel_fontsize)
-ax3.tick_params(top=True, which='both', labelsize=xytick_size)
-ax3.legend()
-ax3.xaxis.set_minor_locator(AutoMinorLocator())
-ax3.yaxis.set_minor_locator(AutoMinorLocator())
-ax3.set_xlim([vmin, vmax])
-ax3.set_xlim([oden_min, oden_max])
+# i = 4000
+#     #i = np.random.randint(0, len(metal_ske))
+#     # other good los: 4197, 7504, 1061
+# print('random index', i)
+# # creating the metal forest for random skewer 'i'
+# v_lores, (ftot_lores, figm_lores, fcgm_lores), \
+# v_hires, (ftot_hires, figm_hires, fcgm_hires), \
+# (oden, T, v_los, x_metal), cgm_tup, tau_igm = CIV_lya.create_metal_forest_red(metal_par_CIV, metal_ske_CIV[[i]], logZ, fwhm, metal_ion, sampling=sampling)
+#
+# v_lores_CIV, (ftot_lores_CIV, figm_lores_CIV, fcgm_lores_CIV), \
+# v_hires_CIV, (ftot_hires_CIV, figm_hires_CIV, fcgm_hires_CIV), \
+# (oden_CIV, T_CIV, v_los, x_metal_CIV), cgm_tup_CIV, tau_igm_CIV = CIV_lya.create_metal_forest_blue(metal_par_CIV, metal_ske_CIV[[i]], logZ, fwhm, metal_ion, sampling=sampling)
+#
+# v_lores_C, (ftot_lores_C, figm_lores_C, fcgm_lores_C), \
+# v_hires_C, (ftot_hires_C, figm_hires_C, fcgm_hires_C), \
+# (oden_C, T_C, v_los, x_metal_C), cgm_tup_C, tau_igm_C = CIV_lya.create_metal_forest_tau(metal_par_CIV, metal_ske_CIV[[i]], logZ, fwhm, metal_ion, sampling=sampling)
+#
+# ax3.plot(v_hires_CIV, tau_igm_CIV[0], c='r',label = 'blue, i = %d' % i)
+# ax3.plot(v_hires, tau_igm[0], '--',c='k', label = 'red')
+# ax3.plot(v_hires, tau_igm_C[0], '-.',c='y', label = 'total')
+# #ax1.set_ylabel('Overdensity', fontsize=xylabel_fontsize)
+# ax3.set_ylabel(r'$\tau$', fontsize=xylabel_fontsize)
+# ax3.tick_params(top=True, which='both', labelsize=xytick_size)
+# ax3.legend()
+# ax3.xaxis.set_minor_locator(AutoMinorLocator())
+# ax3.yaxis.set_minor_locator(AutoMinorLocator())
+# ax3.set_xlim([vmin, vmax])
+# ax3.set_xlim([oden_min, oden_max])
 
 #### temp plot ####
 #ax2.plot(v_hires, T[0], c='k')

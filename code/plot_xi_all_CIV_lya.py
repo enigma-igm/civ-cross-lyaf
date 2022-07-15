@@ -130,7 +130,7 @@ else:
                 if Zeff_label == True:
                     fv, fm = CIV_lya.get_fvfm(logM, tau_R)
                     Zeff = CIV_lya.calc_igm_Zeff(fm, logZ)
-                    label = 'tau_R = ' + '{:.2f}'.format(tau_R) + ', logM = ' + '{:.2f}'.format(logM) + ', Zeff = ' + '{:.2f}'.format(Zeff)
+                    label = 'tau_R = ' + '{:.2f}'.format(tau_R) + ', logM = ' + '{:.2f}'.format(logM) + ', log_Zeff = ' + '{:.2f}'.format(Zeff)
                 else:
                     label = 'tau_R = ' + '{:.2f}'.format(tau_R) + ', logM = ' + '{:.2f}'.format(logM)
                 outcorr = Table.read(corr_outfile)
@@ -157,7 +157,7 @@ else:
                 if Zeff_label == True:
                     fv, fm = CIV_lya.get_fvfm(logM, tau_R)
                     Zeff = CIV_lya.calc_igm_Zeff(fm, logZ)
-                    label = 'tau_R = ' + '{:.2f}'.format(tau_R) + ', logM = ' + '{:.2f}'.format(logM) + ', Zeff = ' + '{:.2f}'.format(Zeff)
+                    label = 'tau_R = ' + '{:.2f}'.format(tau_R) + ', logM = ' + '{:.2f}'.format(logM) + ', logZ_eff = ' + '{:.2f}'.format(Zeff)
                 else:
                     label = 'tau_R = ' + '{:.2f}'.format(tau_R) + ', logM = ' + '{:.2f}'.format(logM)
                 outcorr = Table.read(corr_outfile)
