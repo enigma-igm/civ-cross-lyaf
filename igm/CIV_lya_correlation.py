@@ -14,8 +14,8 @@ get_fvfm
 calc_igm_Zeff
 '''
 
-sys.path.insert(0, "/Users/xinsheng/CIV_forest/")
-sys.path.insert(0, "/Users/xinsheng/enigma/enigma/reion_forest/")
+sys.path.insert(0, "/mnt/quasar/xinsheng/CIV_forest/")
+sys.path.insert(0, "/mnt/quasar/xinsheng/enigma/enigma/reion_forest/")
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -488,7 +488,7 @@ def create_metal_forest_tau(params, skewers, logZ, fwhm, metal_ion, z=None, samp
     return vel_lores, (flux_tot_lores, flux_igm_lores, flux_cgm_lores), \
            vel_hires, (flux_tot_hires, flux_igm_hires, flux_cgm_hires), (oden, v_los, T, x_metal), cgm_tuple, tau_plot
 
-def get_fvfm(logM_want, R_want, fvfm_file='/Users/xinsheng/civ-cross-lyaf/Nyx_output/fvfm_all.fits'):
+def get_fvfm(logM_want, R_want, fvfm_file='/mnt/quasar/xinsheng/output/fvfm/fvfm_all.fits'):
     fvfm = Table.read(fvfm_file)
     logM_all = np.round(fvfm['logM'], 2)
     R_all = np.round(np.array(fvfm['R_Mpc']), 2)

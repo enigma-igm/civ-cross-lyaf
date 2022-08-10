@@ -21,13 +21,18 @@ import matplotlib.pyplot as plt
 import os
 import emcee
 import corner
+import sys
 
 from scipy import optimize
 from IPython import embed
 from enigma.reion_forest.compute_model_grid import read_model_grid
 from enigma.reion_forest.utils import find_closest
 from enigma.reion_forest import inference
+
+sys.path.insert(0, "/Users/xinsheng/CIV_forest/")
+sys.path.insert(0, "/Users/xinsheng/enigma/enigma/reion_forest/")
 import halos_skewers
+
 import time
 from astropy.io import fits
 
@@ -660,4 +665,3 @@ def mcmc_upperlim_boundary():
     plt.axvline(10**logZ_max)
 
     plt.show()
-

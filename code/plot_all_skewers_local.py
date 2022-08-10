@@ -54,7 +54,7 @@ data_path = '/Users/xinsheng/'
 
 skewerfile_CIV = '/Users/xinsheng/civ-cross-lyaf/Nyx_output/tau/rand_skewers_z45_ovt_xciv_tau_R_1.00_logM_9.30.fits'
 
-skewerfile = '/Users/xinsheng/civ-cross-lyaf/Nyx_output/rand_skewers_z45_ovt_tau_CIV.fits'
+skewerfile = '/Users/xinsheng/civ-cross-lyaf/Nyx_output/rand_skewers_z45_ovt_tau.fits'
 
 
 metal_par = Table.read(skewerfile, hdu=1)
@@ -66,7 +66,7 @@ metal_ske_CIV = Table.read(skewerfile_CIV, hdu=2)
 logM = float(skewerfile_CIV.split('logM_')[-1].split('.fits')[0])
 R_Mpc = float(skewerfile_CIV.split('R_')[-1].split('_logM')[0])
 logZ = -3.5
-savefig = '/Users/xinsheng/civ-cross-lyaf/figure/CIV_skewers_new.pdf'
+savefig = '/Users/xinsheng/civ-cross-lyaf/figure/CIV_skewers.pdf'
 #savefig = '/Users/xinsheng/XSWork/CIV/figure/skewers_R_%0.2f_logM_%0.2f.pdf' % (logM, R_Mpc)
 
 metal_ion = 'C IV'
@@ -125,36 +125,30 @@ ax1.xaxis.set_minor_locator(AutoMinorLocator())
 ax1.yaxis.set_minor_locator(AutoMinorLocator())
 oden_min, oden_max = -2, np.round(2 + oden[0].max())
 ax1.set_xlim([vmin, vmax])
-ax1.set_xlim([oden_min, oden_max])
-ax1.legend()
-
+ax1.set_ylim([oden_min, oden_max])
 ### tau plot ###
 
-ax2.plot(v_hires, tau_igm[0], c='k',label = 'Lya')
+ax2.plot(v_hires, np.log10(tau_igm[0]), c='k')
 #ax1.set_ylabel('Overdensity', fontsize=xylabel_fontsize)
-ax2.set_ylabel(r'$\tau$', fontsize=xylabel_fontsize)
+ax2.set_ylabel(r'$log(\tau_{H})$', fontsize=xylabel_fontsize)
 ax2.tick_params(top=True, which='both', labelsize=xytick_size)
 ax2.xaxis.set_minor_locator(AutoMinorLocator())
 ax2.yaxis.set_minor_locator(AutoMinorLocator())
 ax2.set_xlim([vmin, vmax])
-ax2.set_xlim([oden_min, oden_max])
-ax2.legend()
 
-ax3.plot(v_hires, tau_CIV[0], c='r', label = 'CIV')
+ax3.plot(v_hires, tau_CIV[0], c='r')
 #ax1.set_ylabel('Overdensity', fontsize=xylabel_fontsize)
-ax3.set_ylabel(r'$\tau$', fontsize=xylabel_fontsize)
+ax3.set_ylabel(r'$\tau_{CIV}$', fontsize=xylabel_fontsize)
 ax3.tick_params(top=True, which='both', labelsize=xytick_size)
 ax3.xaxis.set_minor_locator(AutoMinorLocator())
 ax3.yaxis.set_minor_locator(AutoMinorLocator())
 ax3.set_xlim([vmin, vmax])
-ax3.set_xlim([oden_min, oden_max])
-ax3.legend()
 
 print(len(v_hires))
 #### flux plot ####
 #ax3.plot(ori_v_hires, ori_ftot_hires[0], alpha=0.7, label='hires (uniform Z)')#, drawstyle='steps-mid', alpha=0.6, zorder=10, color='red')
-ax4.plot(v_hires, ftot_hires[0], 'k', label='Perfect spectrum for lya', drawstyle='steps-mid')#, alpha=0.6, zorder=10, color='red')
-ax4.plot(v_lores, ftot_lores_noise, label='FWHM=%0.1f km/s; SNR=%0.1f; lya' % (fwhm, snr), c='r', alpha=alpha_data, zorder=1, drawstyle='steps-mid')
+ax4.plot(v_hires, ftot_hires[0], 'k', drawstyle='steps-mid')#, alpha=0.6, zorder=10, color='red')
+ax4.plot(v_lores, ftot_lores_noise, label='FWHM=%0.1f km/s; SNR=%0.1f' % (fwhm, snr), c='r', alpha=alpha_data, zorder=1, drawstyle='steps-mid')
 ax4.set_xlabel('v [km/s]', fontsize=xylabel_fontsize)
 ax4.set_ylabel(r'F$_{\mathrm{H}}$', fontsize=xylabel_fontsize)
 ax4.legend(fontsize=legend_fontsize, ncol=2, loc=1)
@@ -166,10 +160,10 @@ ax4.yaxis.set_minor_locator(AutoMinorLocator())
 
 ax5.annotate('log(M)={:5.2f} '.format(logM) + r'M$_{\odot}$, ' + 'R={:5.2f} cMpc, '.format(R_Mpc) + '[C/H]=${:5.2f}$'.format(logZ), \
              xy=(500, 1.185), xytext=(500, 1.085), textcoords='data', xycoords='data', annotation_clip=False, fontsize=legend_fontsize)
-ax5.plot(v_hires_CIV, ftot_hires_CIV[0], 'k', label='Perfect spectrum for CIV', drawstyle='steps-mid')#, alpha=0.6, zorder=10, color='red')
-ax5.plot(v_lores_CIV, ftot_lores_noise_CIV, label='FWHM=%0.1f km/s; SNR=%0.1f; CIV' % (fwhm, snr), c='r', alpha=alpha_data, zorder=1, drawstyle='steps-mid')
+ax5.plot(v_hires_CIV, ftot_hires_CIV[0], 'k', drawstyle='steps-mid')#, alpha=0.6, zorder=10, color='red')
+ax5.plot(v_lores_CIV, ftot_lores_noise_CIV, label='FWHM=%0.1f km/s; SNR=%0.1f' % (fwhm, snr), c='r', alpha=alpha_data, zorder=1, drawstyle='steps-mid')
 ax5.set_xlabel('v [km/s]', fontsize=xylabel_fontsize)
-ax5.set_ylabel(r'F$_{\mathrm{H}}$', fontsize=xylabel_fontsize)
+ax5.set_ylabel(r'F$_{\mathrm{CIV}}$', fontsize=xylabel_fontsize)
 ax5.legend(fontsize=legend_fontsize, ncol=2, loc=1)
 ax5.set_xlim([vmin, vmax])
 ax5.set_ylim([0.9, 1.12])

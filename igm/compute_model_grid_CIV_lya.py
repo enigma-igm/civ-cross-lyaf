@@ -23,9 +23,9 @@ import glob
 from matplotlib import rcParams
 import time
 import sys
-sys.path.insert(0, "/Users/xinsheng/CIV_forest/")
-sys.path.insert(0, "/Users/xinsheng/enigma/enigma/reion_forest/")
-sys.path.insert(0,"/Users/xinsheng/civ-cross-lyaf/code")
+sys.path.insert(0, "/mnt/quasar/xinsheng/CIV_forest/")
+sys.path.insert(0, "/mnt/quasar/xinsheng/enigma/enigma/reion_forest/")
+sys.path.insert(0, "/mnt/quasar/xinsheng/code/")
 
 import matplotlib.cm as cm
 from tqdm.auto import tqdm
@@ -112,7 +112,7 @@ def read_model_grid(modelfile):
 
     return param, xi_mock_array, xi_model_array, covar_array, icovar_array, lndet_array
 
-def compute_model_metal(args):
+def compute_model_metal_lya(args):
 
     # unpacking input args
     i_R, i_logM, iZ, Rval, logMval, logZ, seed, taupath, fwhm, sampling, SNR, vmin_corr, vmax_corr, dv_corr, npath, ncovar, nmock, metal_ion = args
@@ -123,7 +123,7 @@ def compute_model_metal(args):
     # tau files for creating metal forest and computing CF
     rantaufile = os.path.join(taupath + 'rand_skewers_z45_ovt_xciv_tau_R_{:4.2f}'.format(Rval) + '_logM_{:4.2f}'.format(logMval) + '.fits') # 10,000 skewers
 
-    lya_file = '/Users/xinsheng/civ-cross-lyaf/Nyx_output/rand_skewers_z45_ovt_tau_new.fits'
+    lya_file = '/mnt/quasar/xinsheng/output/lya_forest/rand_skewers_z45_ovt_tau.fits'
 
     rand = np.random.RandomState(seed)
     params = Table.read(rantaufile, hdu=1)
@@ -217,23 +217,23 @@ def parser():
     import argparse
 
     parser = argparse.ArgumentParser(description='Create random skewers for CIV forest', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--nproc', type=int, default=1, help="Number of processors to run on")
+    parser.add_argument('--nproc', type=int, default=5, help="Number of processors to run on")
     parser.add_argument('--fwhm', type=float, default=10.0, help="spectral resolution in km/s")
     parser.add_argument('--samp', type=float, default=3.0, help="Spectral sampling: pixels per fwhm resolution element")
     parser.add_argument('--SNR', type=float, default=50.0, help="signal-to-noise ratio")
     parser.add_argument('--nqsos', type=int, default=20, help="number of qsos")
-    parser.add_argument('--delta_z', type=float, default=1.0, help="redshift pathlength per qso")
+    parser.add_argument('--delta_z', type=float, default=0.8, help="redshift pathlength per qso")
     parser.add_argument('--vmin', type=float, default=10.0, help="Minimum of velocity bins for correlation function")
     parser.add_argument('--vmax', type=float, default=3000, help="Maximum of velocity bins for correlation function")
     parser.add_argument('--dv', type=float, default=None, help="Width of velocity bins for correlation function. "
                                                                "If not set fwhm will be used")
     #parser.add_argument('--ncovar', type=int, default=1000000, help="number of mock datasets for computing covariance")
-    parser.add_argument('--ncovar', type=int, default=1, help="number of mock datasets for computing covariance") # small number for test run
-    parser.add_argument('--nmock', type=int, default=1, help="number of mock datasets to store") # mock dataset made up of npath skewers
+    parser.add_argument('--ncovar', type=int, default=1000000, help="number of mock datasets for computing covariance") # small number for test run
+    parser.add_argument('--nmock', type=int, default=300, help="number of mock datasets to store") # mock dataset made up of npath skewers
     parser.add_argument('--seed', type=int, default=1234, help="seed for random number generator")
-    parser.add_argument('--nlogZ', type=int, default=1, help="number of bins for logZ models")
-    parser.add_argument('--logZmin', type=float, default=-4.0, help="minimum logZ value")
-    parser.add_argument('--logZmax', type=float, default=-3.0, help="maximum logZ value")
+    parser.add_argument('--nlogZ', type=int, default=5, help="number of bins for logZ models")
+    parser.add_argument('--logZmin', type=float, default=-4.5, help="minimum logZ value")
+    parser.add_argument('--logZmax', type=float, default=-2.0, help="maximum logZ value")
 
     return parser.parse_args()
 
@@ -262,8 +262,8 @@ def main():
     logZ_vec = np.linspace(logZ_min, logZ_max, nlogZ)
 
     # Grid of enrichment models
-    logM = np.arange(9.0, 9.1, 0.3)
-    R = np.arange(1.0, 1.1, 0.5)
+    logM = np.arange(8.5, 11.0+0.1, 1.0)
+    R = np.arange(0.1, 3.0+0.1, 0.8)
     nlogM, nR = len(logM), len(R)
 
     ### For testing ###
@@ -272,10 +272,10 @@ def main():
     # R = R[0:2]
     # nlogM, nR = len(logM), len(R)
 
-    outpath = '/Users/xinsheng/civ-cross-lyaf/enrichment_models/corrfunc_models/'
+    outpath = '/mnt/quasar/xinsheng/output/corrfunc_models/'
     outfile = outpath + 'corr_func_models_fwhm_{:5.3f}_samp_{:5.3f}_SNR_{:5.3f}_nqsos_{:d}'.format(fwhm, sampling, SNR, nqsos) + '.fits'
 
-    taupath = '/Users/xinsheng/civ-cross-lyaf/Nyx_output/tau/'
+    taupath = '/mnt/quasar/sstie/CIV_forest/Nyx_outputs/z45/enrichment_models/tau/'
     taufiles = glob.glob(os.path.join(taupath, '*.fits'))
 
     # these files only for determining the path length
@@ -320,7 +320,7 @@ def main():
 
     print('Computing nmodel={:d} models on nproc={:d} processors'.format(nlogM * nR * nlogZ, nproc))
 
-    output = imap_unordered_bar(compute_model_metal, all_args, nproc)
+    output = imap_unordered_bar(compute_model_metal_lya, all_args, nproc)
     #pool = Pool(processes=nproc)
     #output = pool.starmap(compute_model, all_args)
 
@@ -356,7 +356,7 @@ def main():
     hdu_param.name = 'METADATA'
     hdulist = fits.HDUList()
     hdulist.append(hdu_param)
-    hdulist.append(fits.ImageHDU(data=xi_mock_array, name='XI_MOCK'))
+    hdulist.append(fits.ImageHDU(data=xi_mock_array, name='XI_MOCK')) # XI_MOCK_ARRAY
     hdulist.append(fits.ImageHDU(data=xi_mean_array, name='XI_MEAN'))
     hdulist.append(fits.ImageHDU(data=covar_array, name='COVAR'))
     hdulist.append(fits.ImageHDU(data=icovar_array, name='ICOVAR'))

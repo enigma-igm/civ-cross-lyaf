@@ -35,8 +35,8 @@ plottype = 'logZ' # all, logZ, logM, tau_R
 Zeff_label = True
 # tau_R_range = np.linspace(1.0,2.0,num = 3)
 # logM_range = np.linspace(9.0,9.6,num = 3)
-logZ = [-3.2,-3.5,-3.8]
-tau_R_range = 0.5
+logZ = [-3.25] # -3.5
+tau_R_range = 0.9
 logM_range = 9.5
 
 # logM = '9.00'
@@ -44,10 +44,10 @@ logM_range = 9.5
 #
 CIVpath = '/Users/xinsheng/civ-cross-lyaf/Nyx_output/tau/'
 lyapath = '/Users/xinsheng/civ-cross-lyaf/Nyx_output/'
-lyafile = 'rand_skewers_z45_ovt_tau_new.fits'
+lyafile = 'rand_skewers_z45_ovt_tau.fits'
 data_prim = 'rand_skewers_z45_ovt_xciv'
 
-outpath = '/Users/xinsheng/civ-cross-lyaf/output/'
+outpath = '/Users/xinsheng/civ-cross-lyaf/output/corr_fit/'
 out_prim = 'corr'
 #
 # tau_metal_file_CIV = datapath + data_prim + '_tau_R_' + tau_R + '_logM_' + logM + '.fits' # 'nyx_sim_data/rand_skewers_z45_ovt_tau_xciv_flux.fits'
@@ -182,7 +182,13 @@ else:
         logM = logM_range
         for logZ_value in logZ:
             corr_outfile = outpath + out_prim + '_tau_R_' + '{:.2f}'.format(tau_R) + '_logM_' + '{:.2f}'.format(logM) + '_logZ_' + '{:.2f}'.format(logZ_value) + '_CIV_lya.fits'
-            label = 'logZ = ' + '{:.2f}'.format(logZ_value)
+            if Zeff_label == True:
+                fv, fm = CIV_lya.get_fvfm(logM, tau_R)
+                #logZ = -3.25
+                Zeff = CIV_lya.calc_igm_Zeff(fm, logZ)
+                label = label = 'logZ = ' + '{:.2f}'.format(logZ_value) + ', logZ_eff = ' + '{:.2f}'.format(Zeff)
+            else:
+                label = 'logZ = ' + '{:.2f}'.format(logZ_value)
             outcorr = Table.read(corr_outfile)
             vel_mid = outcorr['vel_mid'][0]
             xi_tot = outcorr['xi_tot']

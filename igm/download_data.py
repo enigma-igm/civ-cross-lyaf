@@ -15,7 +15,7 @@ data_post_prim = ".fits"
 # tau_R_range = np.linspace(1.0,2.0,num = 3)
 # logM_range = np.linspace(9.0,9.6,num = 3)
 
-tau_R_range = [0.5,1.1,2.5]
+tau_R_range = [0.9]
 logM_range = [9.5]
 
 for n in tau_R_range:
