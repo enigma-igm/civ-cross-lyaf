@@ -43,6 +43,23 @@ from tqdm import tqdm
 import time
 import CIV_lya_correlation as CIV_lya
 
+def custom_cf_bin4(dv1=10, dv2=50, v_end=1000, v_min=10, v_max=2000):
+
+    # linear around peak and small-scales
+    v_bins1 = np.arange(v_min, v_end + dv1, dv1)
+    v_lo1 = v_bins1[:-1]
+    v_hi1 = v_bins1[1:]
+
+    # larger linear bin size
+    v_bins2 = np.arange(v_end, v_max + dv2, dv2)
+    v_lo2 = v_bins2[:-1]
+    v_hi2 = v_bins2[1:]
+
+    v_lo_all = np.concatenate((v_lo1, v_lo2))
+    v_hi_all = np.concatenate((v_hi1, v_hi2))
+
+    return v_lo_all, v_hi_all
+
 def imap_unordered_bar(func, args, nproc):
     """
     Display progress bar.
@@ -115,9 +132,9 @@ def read_model_grid(modelfile):
 def compute_model_metal_lya(args):
 
     # unpacking input args
-    i_R, i_logM, iZ, Rval, logMval, logZ, seed, taupath, fwhm, sampling, SNR, vmin_corr, vmax_corr, dv_corr, npath, ncovar, nmock, metal_ion = args
+    i_R, i_logM, iZ, Rval, logMval, logZ, seed, taupath, fwhm, sampling, SNR, vmin_corr, vmax_corr, dv_corr1, dv_corr2, v_end, npath, ncovar, nmock, metal_ion = args
 
-    if dv_corr < fwhm/sampling:
+    if dv_corr1 < fwhm/sampling:
         raise Exception("dv_corr has to be greater or equal to fwhm/sampling=%0.1f" % (fwhm/sampling))
 
     # tau files for creating metal forest and computing CF
@@ -163,13 +180,13 @@ def compute_model_metal_lya(args):
     # Compute xi (with noise). This takes 46.9s for 10,000 skewers
     print("Computing the 2PCF for noisy and noiseless data...")
     start_cf = time.time()
-    (vel_mid, xi, npix, xi_zero_lag) = CIV_lya.compute_xi_CIV_lya(delta_f, delta_f_lya, vel_hires, vel_hires_lya, vmin_corr, vmax_corr, dv_corr)
+    (vel_mid, xi, npix, xi_zero_lag) = CIV_lya.compute_xi_CIV_lya_double_bin(delta_f, delta_f_lya, vel_hires, vel_hires_lya, vmin_corr, vmax_corr, dv_corr1, dv_corr2, v_end)
     end_cf = time.time()
     print("          done in %0.1f min" % ((end_cf - start_cf) / 60.))
 
     # Compute xi_noiseless, and use this to compute the mean.
     start_cf = time.time()
-    (vel_mid, xi_nless, npix, xi_nless_zero_lag) = CIV_lya.compute_xi_CIV_lya(delta_f_nless, delta_f_nless_lya, vel_hires, vel_hires_lya, vmin_corr, vmax_corr, dv_corr)
+    (vel_mid, xi_nless, npix, xi_nless_zero_lag) = CIV_lya.compute_xi_CIV_lya_double_bin(delta_f_nless, delta_f_nless_lya, vel_hires, vel_hires_lya, vmin_corr, vmax_corr, dv_corr1, dv_corr2, v_end)
     xi_mean = np.mean(xi_nless, axis=0)
     end_cf = time.time()
     print("          done in %0.1f min" % ((end_cf - start_cf) / 60.))
@@ -217,23 +234,26 @@ def parser():
     import argparse
 
     parser = argparse.ArgumentParser(description='Create random skewers for CIV forest', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--nproc', type=int, default=5, help="Number of processors to run on")
+    parser.add_argument('--nproc', type=int, default=30, help="Number of processors to run on")
     parser.add_argument('--fwhm', type=float, default=10.0, help="spectral resolution in km/s")
     parser.add_argument('--samp', type=float, default=3.0, help="Spectral sampling: pixels per fwhm resolution element")
     parser.add_argument('--SNR', type=float, default=50.0, help="signal-to-noise ratio")
     parser.add_argument('--nqsos', type=int, default=20, help="number of qsos")
     parser.add_argument('--delta_z', type=float, default=0.8, help="redshift pathlength per qso")
     parser.add_argument('--vmin', type=float, default=10.0, help="Minimum of velocity bins for correlation function")
-    parser.add_argument('--vmax', type=float, default=3000, help="Maximum of velocity bins for correlation function")
-    parser.add_argument('--dv', type=float, default=None, help="Width of velocity bins for correlation function. "
+    parser.add_argument('--vmax', type=float, default=2000, help="Maximum of velocity bins for correlation function")
+    parser.add_argument('--dv1', type=float, default=None, help="Width of velocity bins for correlation function for selected range. "
                                                                "If not set fwhm will be used")
-    #parser.add_argument('--ncovar', type=int, default=1000000, help="number of mock datasets for computing covariance")
+    parser.add_argument('--dv2', type=float, default=50.0, help="Width of velocity bins for correlation function for unselected range. ")
+    parser.add_argument('--v_end', type=float, default=1000.0, help="Divide the selected and unselected range.")
     parser.add_argument('--ncovar', type=int, default=1000000, help="number of mock datasets for computing covariance") # small number for test run
     parser.add_argument('--nmock', type=int, default=300, help="number of mock datasets to store") # mock dataset made up of npath skewers
     parser.add_argument('--seed', type=int, default=1234, help="seed for random number generator")
-    parser.add_argument('--nlogZ', type=int, default=5, help="number of bins for logZ models")
+    parser.add_argument('--nlogZ', type=int, default=10, help="number of bins for logZ models")
     parser.add_argument('--logZmin', type=float, default=-4.5, help="minimum logZ value")
     parser.add_argument('--logZmax', type=float, default=-2.0, help="maximum logZ value")
+    parser.add_argument('--logM_interval', type=float, default=0.2, help="The interval for each logM step")
+    parser.add_argument('--R_Mpc_interval', type=float, default=0.2, help="The interval for each R step")
 
     return parser.parse_args()
 
@@ -252,8 +272,12 @@ def main():
     seed = args.seed
     vmin_corr = args.vmin
     vmax_corr = args.vmax
-    dv_corr = args.dv if args.dv is not None else fwhm # set dv_corr = fwhm if not provided
+    dv_corr1 = args.dv1 if args.dv1 is not None else fwhm # set dv_corr = fwhm if not provided
+    dv_corr2 = args.dv2
+    v_end = args.v_end
     metal_ion = 'C IV' # for now, hardcoding this
+    logM_in = args.logM_interval
+    R_in = args.R_Mpc_interval
 
     # Grid of metallicities
     nlogZ = args.nlogZ
@@ -262,8 +286,8 @@ def main():
     logZ_vec = np.linspace(logZ_min, logZ_max, nlogZ)
 
     # Grid of enrichment models
-    logM = np.arange(8.5, 11.0+0.1, 1.0)
-    R = np.arange(0.1, 3.0+0.1, 0.8)
+    logM = np.arange(8.5, 11.0+0.1, logM_in)
+    R = np.arange(0.1, 3.0+0.1, R_in)
     nlogM, nR = len(logM), len(R)
 
     ### For testing ###
@@ -288,6 +312,7 @@ def main():
     z_min = z - delta_z
     z_eff = (z + z_min) / 2.0
     dv_path = (z - z_min) / (1.0 + z_eff) * c_light
+
     vel_lores, flux_lores, vel_hires, flux_hires,  (oden, v_los, T, x_metal), cgm_tup = \
         utils.create_metal_forest(params, skewers[0:1], logZ_vec[0], fwhm, metal_ion=metal_ion, sampling=sampling, z=z, cgm_dict=None)
 
@@ -305,7 +330,7 @@ def main():
 
     # Create the iterable argument list for map
     #args = (xhi_path, zstr, fwhm, sampling, SNR, vmin_corr, vmax_corr, dv_corr, npath, ncovar, nmock)
-    args = (taupath, fwhm, sampling, SNR, vmin_corr, vmax_corr, dv_corr, npath, ncovar, nmock, metal_ion)
+    args = (taupath, fwhm, sampling, SNR, vmin_corr, vmax_corr, dv_corr1, dv_corr2, v_end, npath, ncovar, nmock, metal_ion)
     all_args = []
 
     # giving the same random seed to all models, which is what we want to reduce random stochasticity and

@@ -235,6 +235,91 @@ def compute_xi_CIV_lya(delta_f_in_CIV, delta_f_in_lya, vel_spec_CIV, vel_spec_ly
     xi_zero_lag = (ngood > 0)*np.sum(delta_f_lya*delta_f_CIV*gpm_use_CIV, axis=1)/(ngood + (ngood == 0.0))
     return (v_mid, xi, npix, xi_zero_lag)
 
+def compute_xi_CIV_lya_double_bin(delta_f_in_CIV, delta_f_in_lya, vel_spec_CIV, vel_spec_lya, vmin, vmax, dv1, dv2, v_end, gpm=None, progress=False):
+    """
+
+    Args:
+        delta_f_in (float ndarray), shape (nskew, nspec) or (nspec,):
+            Flux contrast array
+        vel_spec (float ndarray): shape (nspec,)
+            Velocities for flux contrast
+        vmin (float):
+            Minimum velocity for correlation function velocity grid. This should be a positive number that shold not
+            be set to zero, since we deal with the zero lag velocity correlation function separately.
+        vmax (float):
+            Maximum velocity for correlation function velocity grid. Must be a positive number.
+        dv (float):
+            Velocity binsize for corrleation functino velocity grid
+        gpm (boolean ndarray), same shape as delta_f, Optional
+            Good pixel mask (True= Good) for the delta_f_in array. Bad pixels will not be used for correlation function
+            computation.
+        progress (bool): Optional
+            If True then show a progress bar
+
+    Returns:
+        v_mid, xi, npix, xi_zero_lag
+
+        v_mid (float ndarray): shape = (ncorr,)
+             Midpoint of the bins in the velocity grid for which the correlation function is evaluated. Here
+             ncorr = (int(round((vmax - vmin)/dv) + 1)
+        xi (float ndarray): shape = (nskew, ncorr)
+             Correlation function of each of the nskew input spectra
+        npix (float ndarray): shape = (ncorr,)
+             Number of spectra pixels contributing to the correlation function estimate in each of the ncorr
+             correlation function velocity bins
+        xi_zero_lag (float ndarray): shape = (nskew,)
+             The zero lage correlation function of each input skewer.
+
+    """
+
+    # This deals with the case where the input delta_f is a single spectrum
+    if(len(delta_f_in_CIV.shape)==1):
+        delta_f_CIV = delta_f_in_CIV.reshape(1,delta_f_in_CIV.size)
+        gpm_use_CIV = np.ones_like(delta_f_CIV,dtype=bool)
+    else:
+        delta_f_CIV = delta_f_in_CIV
+        gpm_use_CIV =  np.ones_like(delta_f_CIV,dtype=bool)
+    nskew_CIV, nspec_CIV = delta_f_CIV.shape
+
+    # This deals with the case where the input delta_f is a single spectrum
+    if(len(delta_f_in_lya.shape)==1):
+        delta_f_lya = delta_f_in_lya.reshape(1,delta_f_in_lya.size)
+        gpm_use_lya = np.ones_like(delta_f_lya,dtype=bool)
+    else:
+        delta_f_lya = delta_f_in_lya
+        gpm_use_lya =  np.ones_like(delta_f_lya,dtype=bool)
+    nskew_lya, nspec_lya = delta_f_lya.shape
+
+    # Correlation function velocity grid, using the mid point values
+    ngrid1 = int(round((v_end - vmin)/dv1) + 1) # number of grid points including vmin and vmax
+    ngrid2 = int(round((vmax - v_end)/dv2))
+    v_corr1 = vmin + dv1 * np.arange(ngrid1)
+    v_corr2 = v_end + dv2 + dv2 * np.arange(ngrid2)
+    v_corr = np.concatenate((v_corr1, v_corr2))
+    v_lo = v_corr[:-1] # excluding the last point (=vmax)
+    v_hi = v_corr[1:] # excluding the first point (=vmin)
+    v_mid = (v_hi + v_lo)/2.0
+    ncorr = v_mid.size
+
+    # This computes all pairs of distances
+    data = np.array([vel_spec_CIV])
+    data = data.transpose()
+    tree = KDTree(data)
+    npix_forest = len(vel_spec_CIV)
+
+    xi = np.zeros((nskew_CIV, ncorr)) # storing the CF of each skewer, rather than the CF of all skewers
+    npix = np.zeros((nskew_CIV, ncorr), dtype=int) # number of pixels that contribute to the CF
+
+    # looping through each velocity bin and computing the 2PCF
+    for iv in range(ncorr):
+        # Grab the list of pixel neighbors within this separation
+        ind, dist = tree.query_radius(data, v_hi[iv], return_distance=True)
+        xi[:, iv], npix[:, iv] = xi_sum_CIV_lya(ind, dist, delta_f_CIV, delta_f_lya, gpm_use_CIV, v_lo[iv], v_hi[iv], nskew_CIV, npix_forest)
+
+    ngood = np.sum(gpm_use_CIV, axis=1)
+    xi_zero_lag = (ngood > 0)*np.sum(delta_f_lya*delta_f_CIV*gpm_use_CIV, axis=1)/(ngood + (ngood == 0.0))
+    return (v_mid, xi, npix, xi_zero_lag)
+
 
 def create_lya_forest(params, skewers, fwhm, z=None, sampling=3.0, cgm_dict=None, seed=None):
     """

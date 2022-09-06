@@ -1,6 +1,6 @@
 
 ############### Problem ###############
-problem_name  = 'compute_model_grid_CIV_lya.py'
+problem_name  = 'CIV_lya_correlation.py'
 
 ############### Module ###############
 import os

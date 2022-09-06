@@ -31,7 +31,7 @@ rand = np.random.RandomState(seed)
 
 # input and output files
 compute_corr = False
-plottype = 'logZ' # all, logZ, logM, tau_R
+plottype = 'logM' # all, logZ, logM, tau_R
 Zeff_label = True
 # tau_R_range = np.linspace(1.0,2.0,num = 3)
 # logM_range = np.linspace(9.0,9.6,num = 3)
