@@ -1,11 +1,11 @@
 now=`date`
 echo "Start: $now"
 
-python /mnt/quasar/xinsheng/code/compute_model_grid_CIV_lya.py \
---nproc 40 --fwhm 10.0 --samp 3.0 --SNR 50.0 --nqsos 25 --delta_z 0.8 \
+python /home/xinsheng/enigma/code/compute_model_grid_CIV_lya.py \
+--nproc 5 --fwhm 10.0 --samp 3.0 --SNR 50.0 --nqsos 25 --delta_z 0.8 \
 --vmin 10.0 --vmax 2000.0 --dv1 10.0 --dv2 50.0 --v_end 1000.0 \
 --ncovar 1000000 --nmock 500 --seed 1259761 \
---logZmin -4.5 --logZmax -2.0 --nlogZ 26 --logM_interval 0.1 --R_Mpc_interval 0.1
+--logZmin -4.5 --logZmax -2.0 --nlogZ 5 --logM_interval 3.0 --R_Mpc_interval 3.0
 
 now=`date`
 echo "Finish: $now"

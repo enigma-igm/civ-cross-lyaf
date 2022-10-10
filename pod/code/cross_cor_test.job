@@ -1,0 +1,36 @@
+#!/bin/bash
+
+#SBATCH --partition batch
+#SBATCH --output /home/xinsheng/enigma/log_test.log
+
+#SBATCH --ntasks 40
+#SBATCH --ntasks-per-core 1
+#--overcommit
+
+# optional settings, enable by adding SBATCH in front
+#--cores-per-socket 20
+#--mincpus 2
+#--ntasks-per-socket 20
+#--sockets-per-node 2
+#--exclusive
+
+#SBATCH --time 96:00:00
+#SBATCH --mail-user xinsheng@ucsb.edu
+#SBATCH --mail-type ALL
+
+#module load intel
+module load openmpi/2.1.5
+#module load openmpi/1.10.7
+module load phdf5/1.10.1
+#Module load scipy
+#Module load hdf5
+
+problem_path=/home/xinsheng/enigma/code
+
+cd $problem_path
+
+python compute_model_grid_CIV_lya_test.py
+
+# TO MONITOR PROGRESS
+# in output folder run
+# watch -n 1 'tail output.txt'

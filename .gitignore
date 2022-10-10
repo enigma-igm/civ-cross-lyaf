@@ -3,3 +3,6 @@ cloudy_output/
 Nyx_output/
 output/
 enrichment_models/
+enrichment_models/corrfunc_models/corr_func_models_fwhm_10.000_samp_3.000_SNR_50.000_nqsos_20.fits
+enrichment_models/corrfunc_models/corr_func_models_fwhm_10.000_samp_3.000_SNR_50.000_nqsos_20.fits
+*.fits

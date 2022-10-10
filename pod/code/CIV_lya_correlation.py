@@ -15,8 +15,9 @@ get_fvfm
 calc_igm_Zeff
 '''
 
-sys.path.insert(0, "/Users/xinsheng/CIV_forest/")
-sys.path.insert(0, "/Users/xinsheng/enigma/enigma/reion_forest/")
+sys.path.insert(0, "/home/xinsheng/enigma/CIV_forest_git/")
+sys.path.insert(0, "/home/xinsheng/enigma/enigma_git/enigma/reion_forest/")
+fvfm_loc = '/home/xinsheng/enigma/fvfm/fvfm_all.fits'
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -39,16 +40,19 @@ from sklearn.neighbors import KDTree
 from linetools.lists.linelist import LineList
 from linetools.abund import solar as labsol
 from IPython import embed
-
 from astropy.io import fits
 from astropy.table import hstack, vstack
-from enigma.reion_forest.compute_model_grid_civ import read_model_grid
+from compute_model_grid_civ import read_model_grid
 import halos_skewers
-
-from enigma.reion_forest.utils import *
+from utils import *
 from metal_corrfunc import *
-
-#import pdb
+from multiprocessing import Pool
+from scipy.interpolate import interp1d, interp2d, RectBivariateSpline, RegularGridInterpolator
+from scipy import optimize
+import emcee
+import corner
+from matplotlib.ticker import AutoMinorLocator
+import inference
 
 def xi_sum_CIV_lya(ind, dist, delta_f_CIV, delta_f_lya , gpm,v_lo, v_hi, nskew, npix_forest):
 
@@ -575,7 +579,7 @@ def create_metal_forest_tau(params, skewers, logZ, fwhm, metal_ion, z=None, samp
     return vel_lores, (flux_tot_lores, flux_igm_lores, flux_cgm_lores), \
            vel_hires, (flux_tot_hires, flux_igm_hires, flux_cgm_hires), (oden, v_los, T, x_metal), cgm_tuple, tau_plot
 
-def get_fvfm(logM_want, R_want, fvfm_file='/Users/xinsheng/civ-cross-lyaf/Nyx_output/fvfm_all.fits'):
+def get_fvfm(logM_want, R_want, fvfm_file=fvfm_loc):
     fvfm = Table.read(fvfm_file)
     logM_all = np.round(fvfm['logM'], 2)
     R_all = np.round(np.array(fvfm['R_Mpc']), 2)
@@ -600,3 +604,343 @@ def calc_igm_Zeff(fm, logZ_fid=-3.5):
     logZ_jfh = np.log10(10**(logZ_fid) * fm)
 
     return logZ_eff
+
+
+def create_lya_forest_short(params, skewers, logZ, fwhm, metal_ion='C IV', z=None, sampling=3.0, cgm_dict=None, seed=None):
+
+    # ~0.00014 sec to generate one skewer
+    if z is None:
+        z = params['z'][0]
+
+    dvpix = fwhm/sampling
+
+    # Size of skewers and pixel scale at sim resolution
+    vside = params['VSIDE'][0] # box size in km/s
+    Ng = params['Ng'][0]       # number of grids on each side of the box
+    dvpix_hires = vside/Ng     # pixel scale of the box in km/s
+    nskew =len(skewers)
+
+    cosmo = FlatLambdaCDM(H0=100.0 * params['lit_h'][0], Om0=params['Om0'][0], Ob0=params['Ob0'][0])
+    tau0, f_ratio, v_metal, nh_bar = metal_tau0(metal_ion, z, logZ, cosmo=Planck15, X=0.76)
+    #tau0, nh_bar = lya_tau0(z, cosmo=Planck15, X=0.76)
+    # note that tau0 is obtained from the stronger blue line
+
+    # Pad the skewer for the convolution
+    npad = int(np.ceil((7.0*fwhm + v_metal.value)/dvpix_hires)) ## v_metal = 0 and f_ratio = 1 is possible?
+    v_pad = npad*dvpix_hires
+    pad_tuple = ((0,0), (npad, npad))
+    #tau_igm = np.pad(tau0*skewers['TAU'].data, pad_tuple, 'wrap')
+    tau_igm = np.pad(skewers['TAU'].data, pad_tuple, 'wrap')
+
+    # Determine the velocity coverage including padding, etc.
+    v_min = 0.0
+    v_max = vside
+    vel_pad = (v_min - v_pad) + np.arange(Ng + 2*npad)*dvpix_hires
+    # For the high-resolution spectrum take the valid region and recenter about zero
+    iobs_hires = (vel_pad >= v_min) & (vel_pad <= v_max)
+    vel_hires = vel_pad[iobs_hires]
+    nhires = vel_hires.size
+    # For the observed spectrum take the valid region and recenter about zero
+    vel_obs_pad = np.arange(vel_pad.min(),vel_pad.max(),dvpix)
+    iobs = (vel_obs_pad >= v_min) & (vel_obs_pad <= v_max)
+    vel_lores = vel_obs_pad[iobs]
+    nlores = vel_lores.size
+
+    tau_cgm = np.zeros_like(tau_igm)
+    cgm_tuple = None
+
+    # Compute the various fluxes with and without the CGM
+    flux_tot_hires_pad = np.exp(-(tau_igm + tau_cgm))
+
+    # Now smooth this and interpolate onto observational wavelength grid
+    sigma_resolution = (fwhm/2.35483)/dvpix_hires  # fwhm = 2.3548 sigma
+
+    flux_tot_sm = gaussian_filter1d(flux_tot_hires_pad, sigma_resolution, mode='mirror')
+
+    flux_tot_interp = interp1d(vel_pad, flux_tot_sm, axis=1,fill_value=0.0, kind='cubic', bounds_error=False)
+
+    flux_tot_pad = flux_tot_interp(vel_obs_pad)
+
+    # For the observed spectrum take the valid region and recenter about zero
+    flux_tot_lores = flux_tot_pad[:,iobs]
+
+    # Guarantee that nothing exceeds one due to roundoff error
+    flux_tot_lores = np.clip(flux_tot_lores, None, 1.0)
+
+    return vel_lores, flux_tot_lores
+
+def create_metal_forest_short(params, skewers, logZ, fwhm, metal_ion, z=None, sampling=3.0, cgm_dict=None, metal_dndz_func=None, seed=None):
+
+
+    # ~0.00014 sec to generate one skewer
+    if z is None:
+        z = params['z'][0]
+
+    dvpix = fwhm/sampling
+
+    # Size of skewers and pixel scale at sim resolution
+    vside = params['VSIDE'][0] # box size in km/s
+    Ng = params['Ng'][0]       # number of grids on each side of the box
+    dvpix_hires = vside/Ng     # pixel scale of the box in km/s
+    nskew =len(skewers)
+
+    cosmo = FlatLambdaCDM(H0=100.0 * params['lit_h'][0], Om0=params['Om0'][0], Ob0=params['Ob0'][0])
+    tau0, f_ratio, v_metal, nh_bar = metal_tau0(metal_ion, z, logZ, cosmo=Planck15, X=0.76)
+    # note that tau0 is obtained from the stronger blue line
+
+    # Pad the skewer for the convolution
+    npad = int(np.ceil((7.0*fwhm + v_metal.value)/dvpix_hires))
+    v_pad = npad*dvpix_hires
+    pad_tuple = ((0,0), (npad, npad))
+    tau_blue = np.pad(tau0*skewers['TAU'].data, pad_tuple, 'wrap')
+
+    xmetal_colname = 'X_' + metal_ion.replace(' ', '')
+    xmetal_pad = np.pad(skewers[xmetal_colname].data, pad_tuple, 'wrap')
+
+    # Determine the velocity coverage including padding, etc.
+    v_min = 0.0
+    v_max = vside
+    vel_pad = (v_min - v_pad) + np.arange(Ng + 2*npad)*dvpix_hires
+    # For the high-resolution spectrum take the valid region and recenter about zero
+    iobs_hires = (vel_pad >= v_min) & (vel_pad <= v_max)
+    vel_hires = vel_pad[iobs_hires]
+    nhires = vel_hires.size
+    # For the observed spectrum take the valid region and recenter about zero
+    vel_obs_pad = np.arange(vel_pad.min(),vel_pad.max(),dvpix)
+    iobs = (vel_obs_pad >= v_min) & (vel_obs_pad <= v_max)
+    vel_lores = vel_obs_pad[iobs]
+    nlores = vel_lores.size
+
+    # original tau array was the stronger blue transition. Now shift velocity array to get tau array for red transition
+    tau_interp = interp1d(vel_pad + v_metal.value, tau_blue*f_ratio, axis=1,fill_value=0.0, kind='cubic', bounds_error=False)
+    tau_red = np.fmax(tau_interp(vel_pad), 0.0)
+    tau_igm = tau_blue + tau_red # total tau is the sum of the red and blue tau's
+
+    tau_interp = interp1d(vel_pad, tau_igm, axis=1,fill_value=0.0, kind='cubic', bounds_error=False)
+    tau_plot = tau_igm[:,iobs_hires]
+    # Now generate the CGM
+    if cgm_dict != None:
+        # tau_cgm, logN_draws, b_draws, v_draws, W_2796_draws, iskew_abs, tau_draws = create_mgii_cgm(vel_pad, nskew, z, cgm_dict, rand=rand)
+        tau_cgm, logN_draws, b_draws, v_draws, W_blue_draws, iskew_abs, tau_draws = create_metal_cgm(vel_pad, nskew, z, cgm_dict, metal_dndz_func, metal_ion=metal_ion, seed=seed)
+
+        # Only pass back the draws that reside in the final velocity coverage (as determined by vel_lores)
+        ikeep = (v_draws > vel_lores.min()) & (v_draws < vel_lores.max())
+        cgm_tuple = (logN_draws[ikeep], b_draws[ikeep], v_draws[ikeep], W_blue_draws[ikeep], iskew_abs[ikeep], tau_draws[ikeep, :])
+    else:
+        tau_cgm = np.zeros_like(tau_igm)
+        cgm_tuple = None
+
+    # Compute the various fluxes with and without the CGM
+    flux_tot_hires_pad = np.exp(-(tau_igm + tau_cgm))
+
+    # Now smooth this and interpolate onto observational wavelength grid
+    sigma_resolution = (fwhm/2.35483)/dvpix_hires  # fwhm = 2.3548 sigma
+    flux_tot_sm = gaussian_filter1d(flux_tot_hires_pad, sigma_resolution, mode='mirror')
+
+    flux_tot_interp = interp1d(vel_pad, flux_tot_sm, axis=1,fill_value=0.0, kind='cubic', bounds_error=False)
+
+    flux_tot_pad = flux_tot_interp(vel_obs_pad)
+
+    # For the observed spectrum take the valid region and recenter about zero
+    flux_tot_lores = flux_tot_pad[:,iobs]
+
+    # Guarantee that nothing exceeds one due to roundoff error
+    flux_tot_lores = np.clip(flux_tot_lores, None, 1.0)
+
+    return vel_lores, flux_tot_lores
+
+
+def interp_likelihood_covar_nproc(init_out, nlogM_fine, nR_fine, nlogZ_fine, interp_lnlike=True, interp_ximodel=False, nproc=None):
+
+    # ~10 sec to interpolate 3d likelihood for nlogM_fine, nR_fine, nlogZ_fine = 251, 201, 161
+    # dlogM_fine 0.01
+    # dR 0.015
+    # dlogZ_fine 0.015625
+
+    # unpack input
+    logM_coarse, R_coarse, logZ_coarse, logM_data, R_data, logZ_data, xi_data, xi_mask, xi_model_array, \
+    covar_array, icovar_array, lndet_array, vel_corr, logM_guess, R_guess, logZ_guess = init_out
+
+    # Interpolate the likelihood onto a fine grid to speed up the MCMC
+
+    nlogM = logM_coarse.size
+    logM_fine_min = logM_coarse.min()
+    logM_fine_max = logM_coarse.max()
+    dlogM_fine = (logM_fine_max - logM_fine_min) / (nlogM_fine - 1)
+    logM_fine = logM_fine_min + np.arange(nlogM_fine) * dlogM_fine
+
+    nR = R_coarse.size
+    R_fine_min = R_coarse.min()
+    R_fine_max = R_coarse.max()
+    dR_fine = (R_fine_max - R_fine_min) / (nR_fine - 1)
+    R_fine = R_fine_min + np.arange(nR_fine) * dR_fine
+
+    nlogZ = logZ_coarse.size
+    logZ_fine_min = logZ_coarse.min()
+    logZ_fine_max = logZ_coarse.max()
+    dlogZ_fine = (logZ_fine_max - logZ_fine_min) / (nlogZ_fine - 1)
+    logZ_fine = logZ_fine_min + np.arange(nlogZ_fine) * dlogZ_fine
+
+    print('dlogM_fine', dlogM_fine)
+    print('%0.2f' %dR_fine)
+    print('dlogZ_fine', dlogZ_fine)
+
+    xi_model_fine, lndet_array_fine, covar_array_fine = inference.interp_model_all(logM_fine, R_fine, \
+    logZ_fine, logM_coarse, R_coarse, logZ_coarse, xi_model_array, lndet_array, covar_array)
+
+    # Loop over the coarse grid and evaluate the likelihood at each location for the chosen mock data
+    # Needs to be repeated for each chosen mock data
+
+
+    lnlike_coarse = np.zeros((nlogM, nR, nlogZ))
+    for ilogM, logM_val in enumerate(logM_coarse):
+        for iR, R_val in enumerate(R_coarse):
+            for ilogZ, logZ_val in enumerate(logZ_coarse):
+                lnlike_coarse[ilogM, iR, ilogZ] = inference.lnlike_calc(xi_data, xi_mask,
+                                                                        xi_model_array[ilogM, iR, ilogZ, :],
+                                                                        lndet_array[ilogM, iR, ilogZ],
+                                                                        covar_array[ilogM, iR, ilogZ, :, :])
+
+    if nproc != None:
+        lnlike_fine = np.zeros((nlogM_fine, nR_fine, nlogZ_fine))
+        all_args = []
+        for ilogM, logM_val in enumerate(logM_fine):
+            for iR, R_val in enumerate(R_fine):
+                for ilogZ, logZ_val in enumerate(logZ_fine):
+                    itup = (ilogM, iR, ilogZ, xi_data, xi_mask, xi_model_fine[ilogM, iR, ilogZ, :], lndet_array_fine[ilogM, iR, ilogZ], covar_array_fine[ilogM, iR, ilogZ, :, :])
+                    all_args.append(itup)
+        output = imap_unordered_bar(lnlike_calc_nproc, all_args, nproc)
+        for out in output:
+            ilogM, iR, ilogZ, lnL = out
+            lnlike_fine[ilogM, iR, ilogZ] = lnL
+
+    else:
+        lnlike_fine = np.zeros((nlogM_fine, nR_fine, nlogZ_fine))
+        for ilogM, logM_val in enumerate(logM_fine):
+            for iR, R_val in enumerate(R_fine):
+                for ilogZ, logZ_val in enumerate(logZ_fine):
+                    lnlike_fine[ilogM, iR, ilogZ] = lnlike_calc(xi_data, xi_mask,
+                                                                            xi_model_fine[ilogM, iR, ilogZ, :],
+                                                                            lndet_array_fine[ilogM, iR, ilogZ],
+                                                                            covar_array_fine[ilogM, iR, ilogZ, :, :])
+
+    logM_max, R_max, logZ_max = np.where(lnlike_fine==lnlike_fine.max())
+
+    print('The most possible grid in fine_cov is logM = %.2f, R = %.2f and logZ = %.2f' % (logM_fine[logM_max], R_fine[R_max], logZ_fine[logZ_max]))
+
+    logM_max, R_max, logZ_max = np.where(lnlike_coarse==lnlike_coarse.max())
+
+    print('The most possible grid in coarse is logM = %.2f, R = %.2f and logZ = %.2f' % (logM_coarse[logM_max], R_coarse[R_max], logZ_coarse[logZ_max]))
+
+    return lnlike_coarse, lnlike_fine, xi_model_fine, logM_fine, R_fine, logZ_fine
+
+def imap_unordered_bar(func, args, nproc):
+    """
+    Display progress bar.
+    """
+    p = Pool(processes=nproc)
+    res_list = []
+    with tqdm(total = len(args)) as pbar:
+        for i, res in tqdm(enumerate(p.imap_unordered(func, args))):
+            pbar.update()
+            res_list.append(res)
+    pbar.close()
+    p.close()
+    p.join()
+    return res_list
+
+def lnlike_calc_nproc(args):
+
+    ilogM, iR, ilogZ, xi_data, xi_mask, xi_model, lndet, covar = args
+    ndim = xi_data.shape[0]
+    diff = xi_mask*(xi_data - xi_model)
+    lnL = -(np.dot(diff,np.linalg.solve(covar, diff)) + lndet + ndim*np.log(2.0*np.pi))/2.0
+
+    return ilogM, iR, ilogZ, lnL
+
+
+def interp_likelihood_covar_nproc_test(init_out, nlogM_fine, nR_fine, nlogZ_fine, interp_lnlike=True, interp_ximodel=False, nproc=None):
+
+    # unpack input
+    logM_coarse, R_coarse, logZ_coarse, logM_data, R_data, logZ_data, xi_data, xi_mask, xi_model_array, \
+    covar_array, icovar_array, lndet_array, vel_corr, logM_guess, R_guess, logZ_guess = init_out
+
+    # Interpolate the likelihood onto a fine grid to speed up the MCMC
+
+    nlogM = logM_coarse.size
+    logM_fine_min = logM_coarse.min()
+    logM_fine_max = logM_coarse.max()
+    dlogM_fine = (logM_fine_max - logM_fine_min) / (nlogM_fine - 1)
+    logM_fine = logM_fine_min + np.arange(nlogM_fine) * dlogM_fine
+
+    nR = R_coarse.size
+    R_fine_min = R_coarse.min()
+    R_fine_max = R_coarse.max()
+    dR_fine = (R_fine_max - R_fine_min) / (nR_fine - 1)
+    R_fine = R_fine_min + np.arange(nR_fine) * dR_fine
+
+    nlogZ = logZ_coarse.size
+    logZ_fine_min = logZ_coarse.min()
+    logZ_fine_max = logZ_coarse.max()
+    dlogZ_fine = (logZ_fine_max - logZ_fine_min) / (nlogZ_fine - 1)
+    logZ_fine = logZ_fine_min + np.arange(nlogZ_fine) * dlogZ_fine
+
+    logM_fine_unit = []
+    R_fine_unit = []
+    logZ_fine_unit = []
+
+    logM_coarse_unit = []
+    R_coarse_unit = []
+    logZ_coarse_unit = []
+
+    for i in range(nlogM-1):
+        logM_fine_unit.append(logM_fine[np.where(logM_fine >= logM_coarse[i] and logM_fine < logM_coarse[i+1])])
+    for i in range(nR-1):
+        R_fine_unit.append(R_fine[np.where(R_fine >= R_coarse[i] and R_fine < R_coarse[i+1])])
+    for i in range(nlogZ-1):
+        logZ_fine_unit.append(logZ_fine[np.where(logZ_fine >= logZ_coarse[i] and logZ_fine < logZ_coarse[i+1])])
+
+    print('dlogM_fine', dlogM_fine)
+    print('%0.2f' %dR_fine)
+    print('dlogZ_fine', dlogZ_fine)
+
+    xi_model_fine, lndet_array_fine, covar_array_fine = inference.interp_model_all(logM_fine, R_fine, \
+    logZ_fine, logM_coarse, R_coarse, logZ_coarse, xi_model_array, lndet_array, covar_array)
+
+    lnlike_coarse = np.zeros((nlogM, nR, nlogZ))
+    for ilogM, logM_val in enumerate(logM_coarse):
+        for iR, R_val in enumerate(R_coarse):
+            for ilogZ, logZ_val in enumerate(logZ_coarse):
+                lnlike_coarse[ilogM, iR, ilogZ] = inference.lnlike_calc(xi_data, xi_mask,
+                                                                        xi_model_array[ilogM, iR, ilogZ, :],
+                                                                        lndet_array[ilogM, iR, ilogZ],
+                                                                        covar_array[ilogM, iR, ilogZ, :, :])
+
+
+    lnlike_fine = np.zeros((nlogM_fine, nR_fine, nlogZ_fine))
+    all_args = []
+    for ilogM, logM_val in enumerate(logM_fine):
+        for iR, R_val in enumerate(R_fine):
+            for ilogZ, logZ_val in enumerate(logZ_fine):
+                itup = (ilogM, iR, ilogZ, xi_data, xi_mask)
+                all_args.append(itup)
+    output = imap_unordered_bar(lnlike_calc_nproc, all_args, nproc)
+    for out in output:
+        ilogM, iR, ilogZ, lnL = out
+        lnlike_fine[ilogM, iR, ilogZ] = lnL
+
+
+    logM_max, R_max, logZ_max = np.where(lnlike_fine==lnlike_fine.max())
+
+    print('The most possible grid in fine_cov is logM = %.2f, R = %.2f and logZ = %.2f' % (logM_fine[logM_max], R_fine[R_max], logZ_fine[logZ_max]))
+
+    logM_max, R_max, logZ_max = np.where(lnlike_coarse==lnlike_coarse.max())
+
+    print('The most possible grid in coarse is logM = %.2f, R = %.2f and logZ = %.2f' % (logM_coarse[logM_max], R_coarse[R_max], logZ_coarse[logZ_max]))
+
+    return lnlike_coarse, lnlike_fine, xi_model_fine, logM_fine, R_fine, logZ_fine
+
+def lnlike_calc_nproc_test(ilogM, iR, ilogZ, ):
+
+    xi_model_fine, lndet_array_fine, covar_array_fine = inference.interp_model_all(logM_fine, R_fine, \
+    logZ_fine, logM_coarse, R_coarse, logZ_coarse, xi_model_array, lndet_array, covar_array)

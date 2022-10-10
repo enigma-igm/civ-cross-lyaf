@@ -17,15 +17,14 @@ os.environ["OPENBLAS_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
 
 import numpy as np
-import matplotlib.pyplot as plt
 from astropy.io import fits
 import glob
 from matplotlib import rcParams
 import time
 import sys
-sys.path.insert(0, "/mnt/quasar/xinsheng/CIV_forest/")
-sys.path.insert(0, "/mnt/quasar/xinsheng/enigma/enigma/reion_forest/")
-sys.path.insert(0, "/mnt/quasar/xinsheng/code/")
+sys.path.insert(0, "/home/xinsheng/enigma/CIV_forest/")
+sys.path.insert(0, "/home/xinsheng/enigma/enigma/enigma/reion_forest/")
+sys.path.insert(0, "/home/xinsheng/enigma/code/")
 
 import matplotlib.cm as cm
 from tqdm.auto import tqdm
@@ -35,7 +34,7 @@ from astropy import constants as const
 import scipy.ndimage
 from astropy.table import Table, hstack, vstack
 from IPython import embed
-from enigma.reion_forest import utils
+import utils
 #import tqdm
 #import enigma.reion_forest.istarmap  # import to apply patch
 from multiprocessing import Pool
@@ -141,12 +140,15 @@ def compute_model_metal_lya(args):
     # tau files for creating metal forest and computing CF
     rantaufile = os.path.join(taupath + 'rand_skewers_z45_ovt_xciv_tau_R_{:4.2f}'.format(Rval) + '_logM_{:4.2f}'.format(logMval) + '.fits') # 10,000 skewers
 
-    lya_file = '/mnt/quasar/xinsheng/output/lya_forest/rand_skewers_z45_ovt_tau.fits'
+    lya_file = '/home/xinsheng/enigma/lya_forest/rand_skewers_z45_ovt_tau.fits'
 
     rand = np.random.RandomState(seed)
     params = Table.read(rantaufile, hdu=1)
     skewers = Table.read(rantaufile, hdu=2)
+    #skewers = skewers[0:100] # testing
 
+    # Generate skewers for rantaufile. This takes 5.36s for 10,000 skewers
+    print("Computing the forest skewers ...")
     vel_lores, flux_lores = CIV_lya.create_metal_forest_short(params, skewers, logZ, fwhm, metal_ion=metal_ion, sampling=sampling, cgm_dict=None)
 
     del skewers
@@ -161,6 +163,7 @@ def compute_model_metal_lya(args):
     del skewers_lya
 
     gc.collect()
+
 
     # Add noise to the total flux
     print("Adding random noise to forest skewers ...")
@@ -189,22 +192,12 @@ def compute_model_metal_lya(args):
     end_cf = time.time()
     print("          done in %0.1f min" % ((end_cf - start_cf) / 60.))
 
-    del delta_f
-    del delta_f_lya
-
-    gc.collect()
-
     # Compute xi_noiseless, and use this to compute the mean.
     start_cf = time.time()
     (vel_mid, xi_nless, npix, xi_nless_zero_lag) = CIV_lya.compute_xi_CIV_lya_double_bin(delta_f_nless, delta_f_nless_lya, vel_lores, vel_lores_lya, vmin_corr, vmax_corr, dv_corr1, dv_corr2, v_end)
     xi_mean = np.mean(xi_nless, axis=0)
     end_cf = time.time()
     print("          done in %0.1f min" % ((end_cf - start_cf) / 60.))
-
-    del delta_f_nless
-    del delta_f_nless_lya
-
-    gc.collect()
 
     # Compute the covariance 569 ms for 10,000 skewers
     print("Computing the covariance matrix ...")
@@ -253,22 +246,22 @@ def parser():
     parser.add_argument('--fwhm', type=float, default=10.0, help="spectral resolution in km/s")
     parser.add_argument('--samp', type=float, default=3.0, help="Spectral sampling: pixels per fwhm resolution element")
     parser.add_argument('--SNR', type=float, default=50.0, help="signal-to-noise ratio")
-    parser.add_argument('--nqsos', type=int, default=20, help="number of qsos")
+    parser.add_argument('--nqsos', type=int, default=25, help="number of qsos")
     parser.add_argument('--delta_z', type=float, default=0.8, help="redshift pathlength per qso")
     parser.add_argument('--vmin', type=float, default=10.0, help="Minimum of velocity bins for correlation function")
     parser.add_argument('--vmax', type=float, default=2000, help="Maximum of velocity bins for correlation function")
-    parser.add_argument('--dv1', type=float, default=None, help="Width of velocity bins for correlation function for selected range. "
+    parser.add_argument('--dv1', type=float, default=10.0, help="Width of velocity bins for correlation function for selected range. "
                                                                "If not set fwhm will be used")
     parser.add_argument('--dv2', type=float, default=50.0, help="Width of velocity bins for correlation function for unselected range. ")
     parser.add_argument('--v_end', type=float, default=1000.0, help="Divide the selected and unselected range.")
     parser.add_argument('--ncovar', type=int, default=1000000, help="number of mock datasets for computing covariance") # small number for test run
-    parser.add_argument('--nmock', type=int, default=300, help="number of mock datasets to store") # mock dataset made up of npath skewers
-    parser.add_argument('--seed', type=int, default=1234, help="seed for random number generator")
-    parser.add_argument('--nlogZ', type=int, default=26, help="number of bins for logZ models")
+    parser.add_argument('--nmock', type=int, default=500, help="number of mock datasets to store") # mock dataset made up of npath skewers
+    parser.add_argument('--seed', type=int, default=1259761, help="seed for random number generator")
+    parser.add_argument('--nlogZ', type=int, default=14, help="number of bins for logZ models")
     parser.add_argument('--logZmin', type=float, default=-4.5, help="minimum logZ value")
     parser.add_argument('--logZmax', type=float, default=-2.0, help="maximum logZ value")
-    parser.add_argument('--logM_interval', type=float, default=0.1, help="The interval for each logM step")
-    parser.add_argument('--R_Mpc_interval', type=float, default=0.1, help="The interval for each R step")
+    parser.add_argument('--logM_interval', type=float, default=0.2, help="The interval for each logM step")
+    parser.add_argument('--R_Mpc_interval', type=float, default=0.2, help="The interval for each R step")
 
     return parser.parse_args()
 
@@ -311,10 +304,10 @@ def main():
     # R = R[0:2]
     # nlogM, nR = len(logM), len(R)
 
-    outpath = '/mnt/quasar/xinsheng/output/corrfunc_models/'
-    outfile = outpath + 'new_corr_func_models_fwhm_{:5.3f}_samp_{:5.3f}_SNR_{:5.3f}_nqsos_{:d}'.format(fwhm, sampling, SNR, nqsos) + '.fits'
+    outpath = '/home/xinsheng/enigma/output/'
+    outfile = outpath + 'test_corr_func_models_fwhm_{:5.3f}_samp_{:5.3f}_SNR_{:5.3f}_nqsos_{:d}'.format(fwhm, sampling, SNR, nqsos) + '.fits'
 
-    taupath = '/mnt/quasar/sstie/CIV_forest/Nyx_outputs/z45/enrichment_models/tau/'
+    taupath = '/home/xinsheng/enigma/tau/'
     taufiles = glob.glob(os.path.join(taupath, '*.fits'))
 
     # these files only for determining the path length
