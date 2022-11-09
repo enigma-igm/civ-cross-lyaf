@@ -5,14 +5,13 @@ sys.path.insert(0, "/Users/xinsheng/civ-cross-lyaf/code/")
 
 import inference_enrichment as ie
 import pdb
-from enigma.reion_forest.compute_model_grid import read_model_grid
+from compute_model_grid import read_model_grid
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.ticker import StrMethodFormatter
 import CIV_lya_correlation as CIV_lya
 from matplotlib import cm
 import os
-
 from astropy.table import Table
 from astropy.io import fits
 import pickle
@@ -21,15 +20,39 @@ import emcee
 os.chdir("/Users/xinsheng/Athena_Radiation-master")
 import neutral_center_colormap
 
+import halos_skewers
+
+
+modelfile = '/Users/xinsheng/civ-cross-lyaf/enrichment_models/corrfunc_models/corr_func_models_fwhm_10.000_samp_3.000_SNR_50.000_nqsos_25.fits'
+#sstie_file = '/Users/xinsheng/civ-cross-lyaf/enrichment_models/corrfunc_models/mcmc_chain_Fig13.fits'
+# hdu = fits.open(sstie_file)
+# param_sstie = hdu[3].data
+# print(hdu[3].header['EXTNAME'])
+
+nproc = 35 # number of cores
+k = 3 # just use in the name the file
+logM_guess = 9.9
+R_guess = 1.0
+logZ_guess = -3.60
+outpath_local = '/Users/xinsheng/civ-cross-lyaf/present/' # output path
+linear_prior = False
+cov = True
+fvfm_file = '/Users/xinsheng/civ-cross-lyaf/Nyx_output/fvfm_all.fits' # path of fvfm_all.fits
+
+# nlogM = 25 # grid of logM
+# nR = 29 # grid of R_mpc
+# nlogZ = 26 # grid of logZ
+
+nlogM = 241 # grid of logM
+nR = 281 # grid of R_mpc
+nlogZ = 241 # grid of logZ
+nwalker = 30 # number of walkers
+walklength = 300000 # walklength in mcmc
+
 def plot_probability(init_out, logM_fine, R_fine, logZ_fine, lnlike_fine, output_local, fine=False, savefig='probability.png'):
+### calculate the probability for the most possible logZ, I commented it out so don't worry about it
     logM_coarse, R_coarse, logZ_coarse, logM_data, R_data, logZ_data, xi_data, xi_mask, xi_model_array, \
     covar_array, icovar_array, lndet_array, vel_corr, logM_guess, R_guess, logZ_guess = init_out
-
-    if fine == False:
-        logM_fine = logM_coarse
-        R_fine = R_coarse
-        logZ_fine = logZ_coarse
-        lnlike_fine = lnlike_coarse
 
     dR = R_fine[1] - R_fine[0]
     dZ = logZ_fine[1] - logZ_fine[0]
@@ -63,7 +86,7 @@ def plot_probability(init_out, logM_fine, R_fine, logZ_fine, lnlike_fine, output
     plt.xlabel('R_Mpc')
 
     plt.colorbar(im, label = 'lnL')
-    plt.savefig(output_local + savefig)
+    plt.savefig(outpath_local + savefig)
     plt.close()
 
     #
@@ -102,53 +125,30 @@ def plot_probability(init_out, logM_fine, R_fine, logZ_fine, lnlike_fine, output
     # plt.close()
 
 
-modelfile = '/Users/xinsheng/civ-cross-lyaf/enrichment_models/corrfunc_models/corr_func_models_fwhm_10.000_samp_3.000_SNR_50.000_nqsos_25.fits'
-#modelfile = '/Users/xinsheng/civ-cross-lyaf/enrichment_models/corrfunc_models/corr_func_models_fwhm_10.000_samp_3.000_SNR_50.000_nqsos_25.fits'
-sstie_file = '/Users/xinsheng/civ-cross-lyaf/enrichment_models/corrfunc_models/mcmc_chain_Fig13.fits'
-
-if sstie_file != None:
-    hdu = fits.open(sstie_file)
-    param_sstie = hdu[3].data
-    print(hdu[3].header['EXTNAME'])
-
-k = 2
-
-logM_guess = 9.20
-R_guess = 2.45
-logZ_guess = -3.50
-outpath_local = '/Users/xinsheng/civ-cross-lyaf/pod/output/mcmc_1/'
-linear_prior = False
-
-cov = True
-
-print(os.path.isfile(outpath_local + 'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.npy' % (logM_guess, R_guess, logZ_guess, k)))
+params, xi_mock_array, xi_model_array, covar_array, icovar_array, lndet_array = ie.read_model_grid(modelfile)
 
 
-if ( os.path.isfile(outpath_local + 'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.npy' % (logM_guess, R_guess, logZ_guess, k)) == True ):
+init_out = pickle.load(open(outpath_local+'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.out' % (logM_guess, R_guess, logZ_guess, k), 'rb'))
 
-    sampler_name = outpath_local + 'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.h5' % (logM_guess, R_guess, logZ_guess, k)
+with open(outpath_local+'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.npy' % (logM_guess, R_guess, logZ_guess, k), 'rb') as f:
 
-    sampler = emcee.backends.HDFBackend(sampler_name)
+    k_test = np.load(f)
+    params = np.load(f)
+    lnlike_fine_cov = np.load(f)
+    xi_model_fine_cov = np.load(f)
+    logM_fine_cov = np.load(f)
+    R_fine_cov = np.load(f)
+    logZ_fine_cov = np.load(f)
 
-    init_out = pickle.load(open(outpath_local+'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.out' % (logM_guess, R_guess, logZ_guess, k), 'rb'))
 
-    with open(outpath_local+'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.npy' % (logM_guess, R_guess, logZ_guess, k), 'rb') as f:
+chain_output = outpath_local + 'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.fits' % (logM_guess, R_guess, logZ_guess, k)
+sampler_name = outpath_local + 'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.h5' % (logM_guess, R_guess, logZ_guess, k)
+sampler = emcee.backends.HDFBackend(sampler_name)
+hdu = fits.open(chain_output)
+param_samples = hdu[3].data
+print(hdu[3].header['EXTNAME'])
 
-        k_test = np.load(f)
 
-        params = np.load(f)
 
-        lnlike_coarse_cov = np.load(f)
-        lnlike_fine_cov = np.load(f)
-        xi_model_fine_cov = np.load(f)
-        logM_fine_cov = np.load(f)
-        R_fine_cov = np.load(f)
-        logZ_fine_cov = np.load(f)
-
-        param_samples = np.load(f)
-
-        bounds = np.load(f)
-
-    plot_probability(init_out, logM_fine_cov, R_fine_cov, logZ_fine_cov, lnlike_fine_cov, output_local=outpath_local, fine=True, savefig='probability_cov.png')
-
-    ie.plot_mcmc(sampler, param_samples, init_out, params, logM_fine_cov, R_fine_cov, logZ_fine_cov, xi_model_fine_cov, linear_prior, outpath_local, overplot=False, overplot_param=None)
+plot_probability(init_out, logM_fine_cov, R_fine_cov, logZ_fine_cov, lnlike_fine_cov, output_local=outpath_local, fine=True, savefig='probability_cov.png')
+#ie.plot_mcmc(sampler, param_samples, init_out, params, logM_fine_cov, R_fine_cov, logZ_fine_cov, xi_model_fine_cov, linear_prior, outpath_local, overplot=False, overplot_param=None, fvfm_file=fvfm_file)

@@ -31,8 +31,11 @@ with open(outpath + 'xi_tot.npy', 'rb') as f:
 logZ_num = []
 xi_select = []
 
+logM_print = 9.1
+tau_R_print = 1.6
+
 for i in range(param_tot.shape[0]):
-    if np.round(param_tot[i,0],2) == 8.5 and np.round(param_tot[i,1],2) == 2.8:
+    if np.round(param_tot[i,0],2) == logM_print and np.round(param_tot[i,1],2) == tau_R_print:
         logZ_num.append(np.round(param_tot[i,2],2))
         xi_select.append(xi_mean_tot[i])
 
@@ -55,8 +58,8 @@ def fit_func_1(x, a):
 popt_2, pcov_2 = curve_fit(fit_func_2, 10**(logZ_calc), xi_calc*1000)
 popt_1, pcov_1 = curve_fit(fit_func_1, 10**(logZ_calc), xi_calc*1000)
 
-plt.figure(figsize = (15,9))
-plt.title('Relation between the xi_mean_max and logZ, for fixed logM and R')
+plt.figure(figsize = (8,8))
+plt.title('Relation between the xi_mean_max and logZ, for logM = %.2f and tau_R = %.2f' % (logM_print, tau_R_print))
 plt.plot(10**(logZ_calc), xi_calc*1000, label = 'original curve, xi_mean_max*1000')
 #plt.plot(10**(logZ_calc), fit_func_2(10**(logZ_calc), *popt_2), label = 'fit curve ax^2+bx+c, a = %.2f, b=%.2f, c=%.2f' % (popt_2[0],popt_2[1], popt_2[2]))
 #plt.plot(10**(logZ_calc), fit_func_1(10**(logZ_calc), *popt_1), label = 'fit curve ax+b, a = %.2f, b=%.2f' % (popt_1[0],popt_1[1]))
@@ -66,7 +69,7 @@ plt.yscale('log')
 plt.xlabel('Z')
 plt.ylabel('xi_mean_max * 1000')
 plt.legend()
-plt.savefig('/Users/xinsheng/civ-cross-lyaf/output/xi_max_logZ.png')
+plt.savefig('/Users/xinsheng/civ-cross-lyaf/output/xi_max_logZ_relation.png')
 
 plt.close()
 
@@ -97,7 +100,7 @@ for i in range(len(logM_select)):
 
 
 
-plt.figure(figsize = (15,9))
+plt.figure(figsize = (8,8))
 plt.title('Relation between the xi_mean_max and logZ_eff')
 plt.plot(logZ_eff_array, np.array(xi_use)*1000, '.', label='max')
 plt.plot(logZ_eff_array, np.array(xi_use_max)*1000, '.', label='first')

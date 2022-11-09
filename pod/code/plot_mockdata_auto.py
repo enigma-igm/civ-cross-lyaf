@@ -21,29 +21,29 @@ import neutral_center_colormap # colorbar from Lizhong Zhang, remove it if you d
 import halos_skewers
 
 
-modelfile = '/home/xinsheng/enigma/output/test_corr_func_models_fwhm_10.000_samp_3.000_SNR_50.000_nqsos_25.fits'
+modelfile = '/home/xinsheng/enigma/output/auto/fine_corr_func_models_fwhm_10.000_samp_3.000_SNR_50.000_nqsos_20.fits'
 #sstie_file = '/Users/xinsheng/civ-cross-lyaf/enrichment_models/corrfunc_models/mcmc_chain_Fig13.fits'
 # hdu = fits.open(sstie_file)
 # param_sstie = hdu[3].data
 # print(hdu[3].header['EXTNAME'])
 
-nproc = 5 # number of cores
+nproc = 10 # number of cores
 k = 3 # just use in the name the file
 logM_guess = 9.9
 R_guess = 1.0
 logZ_guess = -3.60
-outpath_local = '/home/xinsheng/enigma/output/mcmc/' # output path
+outpath_local = '/home/xinsheng/enigma/output/auto/mcmc/' # output path
 linear_prior = False
 cov = True
 fvfm_file = '/home/xinsheng/enigma/fvfm/fvfm_all.fits' # path of fvfm_all.fits
-
+save_covar = False
 # nlogM = 25 # grid of logM
 # nR = 29 # grid of R_mpc
 # nlogZ = 26 # grid of logZ
 
-nlogM = 241 # grid of logM
-nR = 281 # grid of R_mpc
-nlogZ = 241 # grid of logZ
+nlogM = 251 # grid of logM
+nR = 291 # grid of R_mpc
+nlogZ = 251 # grid of logZ
 nwalker = 30 # number of walkers
 walklength = 300000 # walklength in mcmc
 
@@ -56,13 +56,13 @@ def plot_probability(init_out, logM_fine, R_fine, logZ_fine, lnlike_fine, output
     dZ = logZ_fine[1] - logZ_fine[0]
     dM = logM_fine[1] - logM_fine[0]
 
-    fig = plt.figure(figsize = (15,10))
+    fig = plt.figure(figsize = (15,15))
 
     logM_max, R_max, logZ_max = np.where(lnlike_fine==lnlike_fine.max())
 
     lnlike_fine_max = lnlike_fine[:,:,logZ_max].max()
 
-    plt.title('logZ = %.2f' % logZ_fine[logZ_max])
+    plt.title('logZ = %.2f' % logZ_fine[logZ_max], fontsize=20)
     plt.gca().yaxis.set_major_formatter(StrMethodFormatter('{x:,.2f}'))
     plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:,.2f}'))
     im = plt.imshow(lnlike_fine[:,:,logZ_max], vmin = lnlike_fine_max-10, vmax = lnlike_fine_max, origin = 'lower', \
@@ -78,12 +78,12 @@ def plot_probability(init_out, logM_fine, R_fine, logZ_fine, lnlike_fine, output
     logM_range = np.arange(logM_fine.min(),logM_fine.max(),0.2)
     R_range = np.arange(R_fine.min(),R_fine.max(),0.2)
 
-    plt.yticks(logM_range)
-    plt.xticks(R_range)
-    plt.ylabel('logM')
-    plt.xlabel('R_Mpc')
+    plt.yticks(logM_range,fontsize=12.5)
+    plt.xticks(R_range, fontsize=12.5)
+    plt.ylabel('logM', fontsize=15)
+    plt.xlabel('R_Mpc', fontsize=15)
 
-    plt.colorbar(im, label = 'lnL')
+    plt.colorbar(im,fraction=0.046, pad=0.04).set_label('lnL', size=20)
     plt.savefig(outpath_local + savefig)
     plt.close()
 
@@ -125,41 +125,68 @@ def plot_probability(init_out, logM_fine, R_fine, logZ_fine, lnlike_fine, output
 
 params, xi_mock_array, xi_model_array, covar_array, icovar_array, lndet_array = ie.read_model_grid(modelfile)
 
-if ( os.path.isfile(outpath_local + 'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.out' % (logM_guess, R_guess, logZ_guess, k)) == False ):
 
+if ( os.path.isfile(outpath_local + 'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.out' % (logM_guess, R_guess, logZ_guess, k)) == False ):
     init_out = ie.init(modelfile, logM_guess, R_guess, logZ_guess)
     pickle.dump(init_out, open(outpath_local + 'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.out' % (logM_guess, R_guess, logZ_guess, k), 'wb'))
 
 else:
-
     init_out = pickle.load(open(outpath_local+'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.out' % (logM_guess, R_guess, logZ_guess, k), 'rb'))
 
-if ( os.path.isfile(outpath_local + 'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.npy' % (logM_guess, R_guess, logZ_guess, k)) == False ):
+#
+# if save_covar == True:
+#     if ( (os.path.isfile(outpath_local + 'save_covar.npy' == False)) and (os.path.isfile(outpath_local + 'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.npy' % (logM_guess, R_guess, logZ_guess, k)) == False) ):
+#         lnlike_fine_cov, xi_model_fine_cov, logM_fine_cov, R_fine_cov, logZ_fine_cov, lndet_fine_cov, covar_fine_cov = CIV_lya.interp_likelihood_no_covar_nproc(init_out, nlogM, nR, nlogZ, nproc=nproc)
+#         with open(outpath_local +'save_covar.npy', 'wb') as f:
+#             np.save(f,np.array(logM_fine_cov))
+#             np.save(f,np.array(R_fine_cov))
+#             np.save(f,np.array(logZ_fine_cov))
+#             np.save(f,np.array(xi_model_fine_cov))
+#             np.save(f, np.array(lndet_fine_cov))
+#             np.save(f, np.array(covar_fine_cov))
+#         with open(outpath_local +'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.npy' % (logM_guess, R_guess, logZ_guess, k), 'wb') as f:
+#             np.save(f,k)
+#             np.save(f,params)
+#             np.save(f,np.array(lnlike_fine_cov))
+#             np.save(f,np.array(xi_model_fine_cov))
+#             np.save(f,np.array(logM_fine_cov))
+#             np.save(f,np.array(R_fine_cov))
+#             np.save(f,np.array(logZ_fine_cov))
+#
+#     elif ( (os.path.isfile(outpath_local + 'save_covar.npy' == True)) and (os.path.isfile(outpath_local + 'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.npy' % (logM_guess, R_guess, logZ_guess, k)) == False) ):
+#         with open(outpath_local +'save_covar.npy', 'rb') as f:
+#             logM_fine_cov = np.load(f)
+#             R_fine_cov = np.load(f)
+#             logZ_fine_cov = np.load(f)
+#             xi_model_fine_cov = np.load(f)
+#             lndet_fine_cov = np.load(f)
+#             covar_fine_cov = np.load(f)
 
-    lnlike_fine_cov, xi_model_fine_cov, logM_fine_cov, R_fine_cov, logZ_fine_cov = CIV_lya.interp_likelihood_covar_nproc(init_out, nlogM, nR, nlogZ, interp_lnlike=True, interp_ximodel=True, nproc=nproc)
 
-    with open(outpath_local +'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.npy' % (logM_guess, R_guess, logZ_guess, k), 'wb') as f:
-        np.save(f,k)
-        np.save(f,params)
-        np.save(f,np.array(lnlike_fine_cov))
-        np.save(f,np.array(xi_model_fine_cov))
-        np.save(f,np.array(logM_fine_cov))
-        np.save(f,np.array(R_fine_cov))
-        np.save(f,np.array(logZ_fine_cov))
+if save_covar == False:
+    if ( os.path.isfile(outpath_local + 'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.npy' % (logM_guess, R_guess, logZ_guess, k)) == False ):
+        lnlike_fine_cov, xi_model_fine_cov, logM_fine_cov, R_fine_cov, logZ_fine_cov = CIV_lya.interp_likelihood_covar_nproc(init_out, nlogM, nR, nlogZ, nproc=nproc)
+        with open(outpath_local +'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.npy' % (logM_guess, R_guess, logZ_guess, k), 'wb') as f:
+            np.save(f,k)
+            np.save(f,params)
+            np.save(f,np.array(lnlike_fine_cov))
+            np.save(f,np.array(xi_model_fine_cov))
+            np.save(f,np.array(logM_fine_cov))
+            np.save(f,np.array(R_fine_cov))
+            np.save(f,np.array(logZ_fine_cov))
 
-else:
-    with open(outpath_local+'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.npy' % (logM_guess, R_guess, logZ_guess, k), 'rb') as f:
+    else:
+        with open(outpath_local+'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.npy' % (logM_guess, R_guess, logZ_guess, k), 'rb') as f:
+            k_test = np.load(f)
+            params = np.load(f)
+            lnlike_fine_cov = np.load(f)
+            xi_model_fine_cov = np.load(f)
+            logM_fine_cov = np.load(f)
+            R_fine_cov = np.load(f)
+            logZ_fine_cov = np.load(f)
 
-        k_test = np.load(f)
-        params = np.load(f)
-        lnlike_fine_cov = np.load(f)
-        xi_model_fine_cov = np.load(f)
-        logM_fine_cov = np.load(f)
-        R_fine_cov = np.load(f)
-        logZ_fine_cov = np.load(f)
 
 if ( os.path.isfile(outpath_local + 'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.fits' % (logM_guess, R_guess, logZ_guess, k)) == False ):
-
     chain_output = outpath_local + 'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.fits' % (logM_guess, R_guess, logZ_guess, k)
     sampler_name = outpath_local + 'save_logM_%.2f_R_%.2f_logZ_%.2f_k_%d.h5' % (logM_guess, R_guess, logZ_guess, k)
     backend = emcee.backends.HDFBackend(sampler_name)
@@ -174,6 +201,7 @@ else:
     param_samples = hdu[3].data
     print(hdu[3].header['EXTNAME'])
 
-#plot_probability(init_out, logM_fine_cov, R_fine_cov, logZ_fine_cov, lnlike_fine_cov, output_local=outpath_local, savefig='probability_cov.png')
-param_samples_new = CIV_lya.fv_logZ_eff_grid(param_samples, fvfm_file)
-CIV_lya.plot_mcmc_fv_logZ_eff(sampler, param_samples, param_samples_new, init_out, params, logM_fine_cov, R_fine_cov, logZ_fine_cov, xi_model_fine_cov, linear_prior, outpath_local, overplot=False, overplot_param=None, fvfm_file=fvfm_file)
+
+
+plot_probability(init_out, logM_fine_cov, R_fine_cov, logZ_fine_cov, lnlike_fine_cov, output_local=outpath_local, fine=True, savefig='probability_cov.png')
+ie.plot_mcmc(sampler, param_samples, init_out, params, logM_fine_cov, R_fine_cov, logZ_fine_cov, xi_model_fine_cov, linear_prior, outpath_local, overplot=False, overplot_param=None, fvfm_file=fvfm_file)

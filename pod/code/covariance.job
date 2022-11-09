@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --partition batch
-#SBATCH --output /home/xinsheng/enigma/log/likelihood.log
+#SBATCH --output /home/xinsheng/enigma/log/covariance.log
 
 #SBATCH --ntasks 30
 #SBATCH --ntasks-per-core 1
@@ -14,7 +14,7 @@
 #--sockets-per-node 2
 #--exclusive
 
-#SBATCH --time 10:00:00
+#SBATCH --time 20:00:00
 #SBATCH --mail-user xinsheng@ucsb.edu
 #SBATCH --mail-type ALL
 
@@ -29,7 +29,7 @@ problem_path=/home/xinsheng/enigma/code
 
 cd $problem_path
 
-python plot_mockdata.py
+python covariance.py
 
 # TO MONITOR PROGRESS
 # in output folder run

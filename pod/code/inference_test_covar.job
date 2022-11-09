@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #SBATCH --partition batch
-#SBATCH --output /home/xinsheng/enigma/log/likelihood.log
+#SBATCH --output /home/xinsheng/enigma/log/inference_test_covar.log
 
-#SBATCH --ntasks 30
+#SBATCH --ntasks 50
 #SBATCH --ntasks-per-core 1
 #--overcommit
 
@@ -14,7 +14,7 @@
 #--sockets-per-node 2
 #--exclusive
 
-#SBATCH --time 10:00:00
+#SBATCH --time 100:00:00
 #SBATCH --mail-user xinsheng@ucsb.edu
 #SBATCH --mail-type ALL
 
@@ -29,7 +29,7 @@ problem_path=/home/xinsheng/enigma/code
 
 cd $problem_path
 
-python plot_mockdata.py
+python inference_test_covar.py
 
 # TO MONITOR PROGRESS
 # in output folder run

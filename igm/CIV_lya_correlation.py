@@ -13,6 +13,11 @@ create_lya_forest
 create_metal_forest_tau
 get_fvfm
 calc_igm_Zeff
+imap_unordered_bar
+interp_likelihood_covar_nproc
+likelihood_calc
+fv_logZ_eff_grid
+plot_mcmc_fv_logZ_eff
 '''
 
 sys.path.insert(0, "/mnt/quasar/xinsheng/CIV_forest/")
@@ -47,6 +52,7 @@ import halos_skewers
 
 from enigma.reion_forest.utils import *
 from metal_corrfunc import *
+from multiprocessing import Pool
 
 #import pdb
 
@@ -743,3 +749,363 @@ def create_metal_forest_short(params, skewers, logZ, fwhm, metal_ion, z=None, sa
     flux_tot_lores = np.clip(flux_tot_lores, None, 1.0)
 
     return vel_lores, flux_tot_lores
+
+def imap_unordered_bar(func, args, nproc):
+    """
+    Display progress bar.
+    """
+    p = Pool(processes=nproc)
+    res_list = []
+    with tqdm(total = len(args)) as pbar:
+        for i, res in tqdm(enumerate(p.imap_unordered(func, args))):
+            pbar.update()
+            res_list.append(res)
+    pbar.close()
+    p.close()
+    p.join()
+    return res_list
+
+# def lnlike_calc_nproc(args):
+#
+#     ilogM, iR, ilogZ, xi_data, xi_mask, xi_model, lndet, covar = args
+#     ndim = xi_data.shape[0]
+#     diff = xi_mask*(xi_data - xi_model)
+#     lnL = -(np.dot(diff,np.linalg.solve(covar, diff)) + lndet + ndim*np.log(2.0*np.pi))/2.0
+#
+#     return ilogM, iR, ilogZ, lnL
+
+
+def interp_likelihood_covar_nproc(init_out, nlogM_fine, nR_fine, nlogZ_fine, interp_lnlike=True, interp_ximodel=False, nproc=5):
+
+    # unpack input
+    logM_coarse, R_coarse, logZ_coarse, logM_data, R_data, logZ_data, xi_data, xi_mask, xi_model_array, \
+    covar_array, icovar_array, lndet_array, vel_corr, logM_guess, R_guess, logZ_guess = init_out
+
+    # Interpolate the likelihood onto a fine grid to speed up the MCMC
+
+    nlogM = logM_coarse.size
+    logM_fine_min = logM_coarse.min()
+    logM_fine_max = logM_coarse.max()
+    dlogM_fine = (logM_fine_max - logM_fine_min) / (nlogM_fine - 1)
+    logM_fine = logM_fine_min + np.arange(nlogM_fine) * dlogM_fine
+    logM_fine[-1] = logM_coarse[-1]
+    logM_fine[0] = logM_coarse[0]
+
+    nR = R_coarse.size
+    R_fine_min = R_coarse.min()
+    R_fine_max = R_coarse.max()
+    dR_fine = (R_fine_max - R_fine_min) / (nR_fine - 1)
+    R_fine = R_fine_min + np.arange(nR_fine) * dR_fine
+    R_fine[-1] = R_coarse[-1]
+    R_fine[0] = R_coarse[0]
+
+    nlogZ = logZ_coarse.size
+    logZ_fine_min = logZ_coarse.min()
+    logZ_fine_max = logZ_coarse.max()
+    dlogZ_fine = (logZ_fine_max - logZ_fine_min) / (nlogZ_fine - 1)
+    logZ_fine = logZ_fine_min + np.arange(nlogZ_fine) * dlogZ_fine
+    logZ_fine[-1] = logZ_coarse[-1]
+    logZ_fine[0] = logZ_coarse[0]
+
+    logM_fine_unit = []
+    R_fine_unit = []
+    logZ_fine_unit = []
+
+    logM_fine_unit_loc = []
+    R_fine_unit_loc = []
+    logZ_fine_unit_loc = []
+
+    for i in range(nlogM-1):
+        if i == nlogM-2:
+            logM_fine_unit.append(logM_fine[np.where((logM_fine >= logM_coarse[i]) & (logM_fine <= logM_coarse[i+1]))[0]])
+            logM_fine_unit_loc.append(np.where((logM_fine >= logM_coarse[i]) & (logM_fine <= logM_coarse[i+1]))[0])
+        else:
+            logM_fine_unit.append(logM_fine[np.where((logM_fine >= logM_coarse[i]) & (logM_fine < logM_coarse[i+1]))[0]])
+            logM_fine_unit_loc.append(np.where((logM_fine >= logM_coarse[i]) & (logM_fine < logM_coarse[i+1]))[0])
+
+    for i in range(nR-1):
+        if i == nR-2:
+            R_fine_unit.append(R_fine[np.where((R_fine >= R_coarse[i]) & (R_fine <= R_coarse[i+1]))[0]])
+            R_fine_unit_loc.append(np.where((R_fine >= R_coarse[i]) & (R_fine <= R_coarse[i+1]))[0])
+        else:
+            R_fine_unit.append(R_fine[np.where((R_fine >= R_coarse[i]) & (R_fine < R_coarse[i+1]))[0]])
+            R_fine_unit_loc.append(np.where((R_fine >= R_coarse[i]) & (R_fine < R_coarse[i+1]))[0])
+
+
+    for i in range(nlogZ-1):
+        if i == nlogZ-2:
+            logZ_fine_unit.append(logZ_fine[np.where((logZ_fine >= logZ_coarse[i]) & (logZ_fine <= logZ_coarse[i+1]))[0]])
+            logZ_fine_unit_loc.append(np.where((logZ_fine >= logZ_coarse[i]) & (logZ_fine <= logZ_coarse[i+1]))[0])
+        else:
+            logZ_fine_unit.append(logZ_fine[np.where((logZ_fine >= logZ_coarse[i]) & (logZ_fine < logZ_coarse[i+1]))[0]])
+            logZ_fine_unit_loc.append(np.where((logZ_fine >= logZ_coarse[i]) & (logZ_fine < logZ_coarse[i+1]))[0])
+
+    logM_fine_unit = np.array(logM_fine_unit, dtype='object')
+    R_fine_unit = np.array(R_fine_unit, dtype='object')
+    logZ_fine_unit = np.array(logZ_fine_unit, dtype='object')
+
+    logM_fine_unit_loc = np.array(logM_fine_unit_loc, dtype='object')
+    R_fine_unit_loc = np.array(R_fine_unit_loc, dtype='object')
+    logZ_fine_unit_loc = np.array(logZ_fine_unit_loc, dtype='object')
+
+    print('dlogM_fine', dlogM_fine)
+    print('dR_fine' %dR_fine)
+    print('dlogZ_fine', dlogZ_fine)
+
+    lnlike_fine = np.zeros((nlogM_fine, nR_fine, nlogZ_fine))
+    xi_model_fine = np.zeros((nlogM_fine, nR_fine, nlogZ_fine, xi_model_array.shape[-1]))
+    all_args = []
+    for i in range(nlogM-1):
+        for j in range(nR-1):
+            for k in range(nlogZ-1):
+                itup = (i, j, k, logM_fine_unit[i], R_fine_unit[j], logZ_fine_unit[k], \
+                logM_fine_unit_loc[i], R_fine_unit_loc[j], logZ_fine_unit_loc[k],\
+                logM_coarse[i:i+2], R_coarse[j:j+2], logZ_coarse[k:k+2],\
+                xi_model_array[i:i+2,j:j+2,k:k+2,:], lndet_array[i:i+2,j:j+2,k:k+2], covar_array[i:i+2,j:j+2,k:k+2,:,:],\
+                xi_data, xi_mask)
+                all_args.append(itup)
+
+    output = imap_unordered_bar(likelihood_calc, all_args, nproc)
+    for out in output:
+        nlogM, nR, nlogZ, logM_fine_unit_loc, R_fine_unit_loc, logZ_fine_unit_loc, lnlike_unit, xi_unit = out
+        for i in logM_fine_unit_loc:
+            for j in R_fine_unit_loc:
+                for k in logZ_fine_unit_loc:
+                    lnlike_fine[i, j, k] = lnlike_unit[np.where(logM_fine_unit_loc==i)[0][0], np.where(R_fine_unit_loc==j)[0][0], np.where(logZ_fine_unit_loc==k)[0][0]]
+                    xi_model_fine[i, j, k, :] = xi_unit[np.where(logM_fine_unit_loc==i)[0][0], np.where(R_fine_unit_loc==j)[0][0], np.where(logZ_fine_unit_loc==k)[0][0], :]
+    logM_max, R_max, logZ_max = np.where(lnlike_fine==lnlike_fine.max())
+
+    print('The most possible grid in fine_cov is logM = %.2f, R = %.2f and logZ = %.2f' % (logM_fine[logM_max], R_fine[R_max], logZ_fine[logZ_max]))
+
+    return lnlike_fine, xi_model_fine, logM_fine, R_fine, logZ_fine
+
+def likelihood_calc(args):
+
+    nlogM, nR, nlogZ, logM_fine, R_fine, logZ_fine, \
+    logM_fine_unit_loc, R_fine_unit_loc, logZ_fine_unit_loc,\
+    logM_coarse, R_coarse, logZ_coarse, xi_model_array, lndet_array, covar_array, xi_data, xi_mask = args
+
+    xi_model_fine, lndet_fine, covar_fine = inference.interp_model_all(logM_fine, R_fine, \
+    logZ_fine, logM_coarse, R_coarse, logZ_coarse, xi_model_array, lndet_array, covar_array)
+
+    lnlike_fine = np.zeros((len(logM_fine), len(R_fine), len(logZ_fine)))
+    for ilogM, logM_val in enumerate(logM_fine):
+        for iR, R_val in enumerate(R_fine):
+            for ilogZ, logZ_val in enumerate(logZ_fine):
+                lnlike_fine[ilogM, iR, ilogZ] = inference.lnlike_calc(xi_data, xi_mask,
+                                                                        xi_model_fine[ilogM, iR, ilogZ, :],
+                                                                        lndet_fine[ilogM, iR, ilogZ],
+                                                                        covar_fine[ilogM, iR, ilogZ, :, :])
+
+    return nlogM, nR, nlogZ, logM_fine_unit_loc, R_fine_unit_loc, logZ_fine_unit_loc, lnlike_fine, xi_model_fine
+
+
+
+def fv_logZ_eff_grid(param_samples):
+
+    logM_grid_coarse = np.linspace(8.5, 11.0, 26)
+    R_grid_coarse = np.linspace(0.1, 3.0, 30)
+
+    fv_coarse = np.zeros((len(logM_grid_coarse),len(R_grid_coarse)))
+    fm_coarse = np.zeros((len(logM_grid_coarse),len(R_grid_coarse)))
+
+    for i,logM in enumerate(logM_grid_coarse):
+        for j, R in enumerate(R_grid_coarse):
+            fv_coarse[i,j], fm_coarse[i,j] = halos_skewers.get_fvfm(np.round(logM, 2), np.round(R, 2))
+
+    logM_array = param_samples[:,0]
+    R_array = param_samples[:,1]
+    logZ_array = param_samples[:,2]
+
+    fv_array = []
+    logZ_eff_array = []
+
+    fv_func = RegularGridInterpolator((logM_grid_coarse, R_grid_coarse), fv_coarse)
+    fm_func = RegularGridInterpolator((logM_grid_coarse, R_grid_coarse), fm_coarse)
+
+    fv_out = fv_func(param_samples[:,0:2])
+    fm_out = fm_func(param_samples[:,0:2])
+
+    for i in range(len(fv_out)):
+        fv = fv_out[i]
+        fm = fm_out[i]
+        logZ = logZ_array[i]
+        logZ_eff = calc_igm_Zeff(fm, logZ)
+
+        fv_array.append(fv)
+        logZ_eff_array.append(logZ_eff)
+
+    param_samples_new = np.column_stack((np.array(fv_array), np.array(logZ_eff_array)))
+
+    return param_samples_new
+
+def plot_mcmc_fv_logZ_eff(sampler, param_samples, param_samples_new, init_out, params, logM_fine, R_fine, logZ_fine, xi_model_fine, linear_prior, outpath_local, seed=None, overplot=False, overplot_param=None, fvfm_file=None):
+    # seed here used to choose random nrand(=50) mcmc realizations to plot on the 2PCF measurement
+
+    logM_coarse, R_coarse, logZ_coarse, logM_data, R_data, logZ_data, xi_data, xi_mask, xi_model_array, \
+    covar_array, icovar_array, lndet_array, vel_corr, logM_guess, R_guess, logZ_guess = init_out
+
+    ##### (1) Make the walker plot, use the true values in the chain
+    var_label = ['fv', 'logZ_eff']
+
+    fv_data, fm_data = halos_skewers.get_fvfm(np.round(logM_data, 2), np.round(R_data, 2))
+    logZ_eff_data = calc_igm_Zeff(fm_data, logZ_data)
+
+    #truths = [10**(logM_data), R_data, 10**(logZ_data)] if linear_prior else [logM_data, R_data, logZ_data]
+    truths = [fv_data, logZ_eff_data] # (8/16/21) linear_prior only on logZ
+    print("truths", truths)
+
+    print(param_samples.shape)
+    ##### (2) Make the corner plot, again use the true values in the chain
+    fig = corner.corner(param_samples_new, labels=var_label, range=[(0,1),(-4.5,-2.0)], truths=truths, levels=(0.68, 0.95, 0.997), color='k', \
+                        truth_color='darkgreen', \
+                        show_titles=True, title_kwargs={"fontsize": 15}, label_kwargs={'fontsize': 20}, \
+                        data_kwargs={'ms': 1.0, 'alpha': 0.1})
+    if overplot == True:
+        corner.corner(overplot_param, fig=fig, color='r')
+    for ax in fig.get_axes():
+        # ax.tick_params(axis='both', which='major', labelsize=14)
+        # ax.tick_params(axis='both', which='minor', labelsize=12)
+        ax.tick_params(labelsize=12)
+
+    plt.savefig(outpath_local + 'corner.pdf')
+    plt.close()
+
+    ##### (3) Make the corrfunc plot with mcmc realizations
+    if fvfm_file != None:
+        fv, fm = halos_skewers.get_fvfm(np.round(logM_data,2), np.round(R_data,2), fvfm_file=fvfm_file)
+    else:
+        fv, fm = halos_skewers.get_fvfm(np.round(logM_data,2), np.round(R_data,2))
+    logZ_eff = halos_skewers.calc_igm_Zeff(fm, logZ_fid=logZ_data)
+    print("logZ_eff", logZ_eff)
+    corrfunc_plot_3d_fv_logZ_eff(xi_data, param_samples, param_samples_new, params, logM_fine, R_fine, logZ_fine, xi_model_fine, logM_coarse, R_coarse,
+                     logZ_coarse, covar_array, fv_data, logZ_eff_data, outpath_local, nrand=50, seed=seed, fvfm_file=fvfm_file)
+
+
+def corrfunc_plot_3d_fv_logZ_eff(xi_data, samples, samples_new, params, logM_fine, R_fine, logZ_fine, xi_model_fine, logM_coarse, R_coarse, logZ_coarse, \
+                     covar_array, fv_data, logZ_eff_data, outpath_local, nrand=50, seed=None, fvfm_file=None):
+
+    if seed == None:
+        seed = np.random.randint(0, 10000000)
+        print("Using random seed", seed)
+    else:
+        print("Using random seed", seed)
+
+    rand = np.random.RandomState(seed)
+    factor = 1000
+
+    vel_corr = params['vel_mid'].flatten()
+    vel_min = params['vmin_corr']
+    vel_max = params['vmax_corr']
+
+    # Compute the mean model from the samples
+    xi_model_samp = inference.xi_model_3d(samples, logM_fine, R_fine, logZ_fine, xi_model_fine)
+    xi_model_samp_mean = np.mean(xi_model_samp, axis=0)
+
+    # Compute the covariance at the mean model
+    theta_mean = np.mean(samples, axis=0)
+    covar_mean = inference.covar_model_3d(theta_mean, logM_coarse, R_coarse, logZ_coarse, covar_array)
+    xi_err = np.sqrt(np.diag(covar_mean))
+
+    # Grab some realizations
+    imock = rand.choice(np.arange(samples.shape[0]), size=nrand)
+    xi_model_rand = xi_model_samp[imock, :]
+    ymin = factor * np.min(xi_data - 1.3 * xi_err)
+    ymax = factor * np.max(xi_data + 1.6 * xi_err)
+    #ymax = 2*factor * np.max(xi_data + 1.6 * xi_err)
+
+    # Plotting
+    fx = plt.figure(1, figsize=(12, 7))
+    # left, bottom, width, height
+    rect = [0.12, 0.12, 0.84, 0.75]
+    axis = fx.add_axes(rect)
+
+    axis.errorbar(vel_corr, factor*xi_data, yerr=factor*xi_err, marker='o', ms=6, color='black', ecolor='black', capthick=2,
+                  capsize=4, alpha=0.8, mec='none', ls='none', label='mock data', zorder=20)
+    axis.plot(vel_corr, factor*xi_model_samp_mean, linewidth=2.0, color='red', zorder=10, label='inferred model')
+
+    axis.set_xlabel(r'$\Delta v$ [km/s]', fontsize=26)
+    #axis.set_ylabel(r'$\xi(\Delta v)$', fontsize=26, labelpad=-4)
+    axis.set_ylabel(r'$\xi(\Delta v)\times %d$' % factor, fontsize=26, labelpad=-4)
+
+    axis.tick_params(axis="x", labelsize=16)
+    axis.tick_params(axis="y", labelsize=16)
+
+    #xoffset = -0.1
+    #offset = 0.12
+    xoffset = 0.0
+    offset = 0.0
+    vmin, vmax = 0.1 * vel_corr.min(), 1.02 * vel_corr.max()
+    true_xy = (vmin + (0.44 + xoffset)*(vmax - vmin), (0.60+offset) * ymax)
+    fv_xy = (vmin + (0.4 + xoffset)*(vmax-vmin), (0.52+offset)*ymax)
+    logZ_eff_xy  = (vmin + (0.4 + xoffset)*(vmax-vmin), (0.44+offset)*ymax)
+
+    fv_label = r'fv $= {:3.2f}$'.format(fv_data)
+    logZ_eff_label = r'logZ_eff $= {:3.2f}$'.format(logZ_eff_data)
+
+    axis.annotate('True', xy=true_xy, xytext=true_xy, textcoords='data', xycoords='data', color='darkgreen', annotation_clip=False,fontsize=16, zorder=25, style='italic')
+    axis.annotate(fv_label, xy=fv_xy, xytext=fv_xy, textcoords='data', xycoords='data', color='darkgreen', annotation_clip=False,fontsize=16, zorder=25)
+    axis.annotate(logZ_eff_label, xy=logZ_eff_xy, xytext=logZ_eff_xy, textcoords='data', xycoords='data', color='darkgreen', annotation_clip=False, fontsize=16, zorder=25)
+
+    # error bar
+    percent_lower = (1.0-0.6827)/2.0
+    percent_upper = 1.0 - percent_lower
+    param = np.median(samples_new, axis=0)
+    param_lower = param - np.percentile(samples_new, 100*percent_lower, axis=0)
+    param_upper = np.percentile(samples_new, 100*percent_upper, axis=0) - param
+
+    infr_xy = (vmin + (0.74 + xoffset)*(vmax-vmin), (0.60+offset)*ymax)
+    fv_xy  = (vmin + (0.685 + xoffset)*(vmax-vmin), (0.52+offset)*ymax)
+    logZ_eff_xy = (vmin + (0.685 + xoffset) * (vmax - vmin), (0.44+offset) * ymax)
+
+    fv_label = r'fv $= {:3.2f}^{{+{:3.2f}}}_{{-{:3.2f}}}$'.format(param[0], param_upper[0], param_lower[0])
+    logZ_eff_label = r'logZ_eff $= {:3.2f}^{{+{:3.2f}}}_{{-{:3.2f}}}$'.format(param[1], param_upper[1], param_lower[1])
+
+    axis.annotate('Inferred', xy=infr_xy, xytext=infr_xy, textcoords='data', xycoords='data', color='red', annotation_clip=False,fontsize=16, zorder=25, style='italic')
+    axis.annotate(fv_label, xy=fv_xy, xytext=fv_xy, textcoords='data', xycoords='data', color='red', annotation_clip=False,fontsize=16, zorder=25)
+    axis.annotate(logZ_eff_label, xy=logZ_eff_xy, xytext=logZ_eff_xy, textcoords='data', xycoords='data', color='red', annotation_clip=False, fontsize=16, zorder=25)
+
+    for ind in range(nrand):
+        label = 'posterior draws' if ind == 0 else None
+        axis.plot(vel_corr, factor*xi_model_rand[ind, :], linewidth=0.4, color='cornflowerblue', alpha=0.6, zorder=0, label=label)
+
+    axis.tick_params(right=True, which='both')
+    axis.minorticks_on()
+    axis.set_xlim((vmin, vmax))
+    axis.set_ylim((ymin, ymax))
+
+    # Make the new upper x-axes in cMpc
+    z = params['z'][0]
+    cosmo = FlatLambdaCDM(H0=100.0 * params['lit_h'][0], Om0=params['Om0'][0], Ob0=params['Ob0'][0])
+    Hz = (cosmo.H(z))
+    a = 1.0 / (1.0 + z)
+    rmin = (vmin * u.km / u.s / a / Hz).to('Mpc').value
+    rmax = (vmax * u.km / u.s / a / Hz).to('Mpc').value
+    atwin = axis.twiny()
+    atwin.set_xlabel('R [cMpc]', fontsize=26, labelpad=8)
+    atwin.xaxis.tick_top()
+    # atwin.yaxis.tick_right()
+    atwin.axis([rmin, rmax, ymin, ymax])
+    atwin.tick_params(top=True)
+    atwin.xaxis.set_minor_locator(AutoMinorLocator())
+    atwin.tick_params(axis="x", labelsize=16)
+
+    axis.annotate('CIV doublet', xy=(700, 0.90 * ymax), xytext=(700, 0.90* ymax), fontsize=16, color='black')
+    axis.annotate('separation', xy=(710, 0.84 * ymax), xytext=(710, 0.84 * ymax), fontsize=16, color='black')
+    axis.annotate('', xy=(520, 0.88 * ymax), xytext=(680, 0.88* ymax),
+                fontsize=16, arrowprops={'arrowstyle': '-|>', 'lw': 4, 'color': 'black'}, va='center', color='black')
+
+    vel_doublet = vel_metal_doublet('C IV', returnVerbose=False)
+    axis.vlines(vel_doublet.value, ymin, ymax, color='k', linestyle='--', linewidth=2)
+
+    # Plot a vertical line at the MgII doublet separation
+    #vel_mg = vel_mgii()
+    #axis.vlines(vel_mg.value, ymin, ymax, color='black', linestyle='--', linewidth=1.2)
+
+    axis.legend(fontsize=16,loc='lower left', bbox_to_anchor=(1350, 0.69*ymax), bbox_transform=axis.transData)
+
+    #plt.tight_layout()
+    plt.savefig(outpath_local + 'fit.pdf')
+    #pdb.set_trace()
+
+    plt.close()

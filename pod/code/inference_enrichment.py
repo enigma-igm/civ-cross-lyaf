@@ -18,8 +18,8 @@ Functions here:
 '''
 import sys
 
-sys.path.insert(0, "/home/xinsheng/enigma/CIV_forest_git/")
-sys.path.insert(0, "/home/xinsheng/enigma/enigma_git/enigma/reion_forest/")
+sys.path.insert(0, "/home/xinsheng/enigma/CIV_forest/")
+sys.path.insert(0, "/home/xinsheng/enigma/enigma/enigma/reion_forest/")
 sys.path.insert(0, "/home/xinsheng/enigma/code/")
 
 import numpy as np
