@@ -25,11 +25,11 @@ import neutral_center_colormap # colorbar from Lizhong Zhang, remove it if you d
 import halos_skewers
 
 
-modelfile = '/home/xinsheng/enigma/output/new_corr_func_models_fwhm_10.000_samp_3.000_SNR_50.000_nqsos_25.fits'
+modelfile = '/home/xinsheng/enigma/output/auto/fine_corr_func_models_fwhm_10.000_samp_3.000_SNR_50.000_nqsos_20.fits'
 
 nproc = 50 # number of cores
 fvfm_file = '/home/xinsheng/enigma/fvfm/fvfm_all.fits' # path of fvfm_all.fits
-covar_path = '/home/xinsheng/enigma/covar/'
+covar_path = '/home/xinsheng/enigma/covar_auto/'
 nlogM = 251 # grid of logM
 nR = 291 # grid of R_mpc
 nlogZ = 251 # grid of logZ

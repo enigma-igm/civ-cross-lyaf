@@ -2,8 +2,8 @@
 ############### Problem ###############
 # problem_name1  = 'likelihood_auto.job'
 # problem_name2  = 'likelihood.job'
-problem_name1  = 'inference_test_covar.job'
-problem_name2  = 'inference_test_covar.py'
+problem_name1  = 'covar_generator.job'
+problem_name2  = 'covar_generator.py'
 problem_name3  = 'likelihood.job'
 problem_name4  = 'plot_mockdata.py'
 problem_name5 = 'CIV_lya_correlation.py'

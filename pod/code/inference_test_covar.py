@@ -3,7 +3,7 @@ import sys
 sys.path.insert(0, "/home/xinsheng/enigma/CIV_forest/") # inference_enrichment and halos_skewers dictionary
 sys.path.insert(0, "/home/xinsheng/enigma/enigma/enigma/reion_forest/") # engima_reion_forest dictionary
 sys.path.insert(0, "/home/xinsheng/enigma/code/") # CIV_lya_correlation.py dictionary
-
+from utils import find_closest
 import inference_enrichment as ie
 import pdb
 from compute_model_grid import read_model_grid
@@ -55,15 +55,16 @@ logZ_tot = []
 logZ_coarse = np.linspace(-4.5, -2.0, 26)
 logM_coarse = np.arange(8.5, 11.0+0.1, 0.1)
 R_coarse = np.arange(0.1, 3.0+0.1, 0.1)
-logZ_data = logZ_coarse[ilogZ]
-logM_data = logM_coarse[ilogM]
-R_data = R_coarse[iR]
 ilogZ = find_closest(logZ_coarse, logZ_guess)
 ilogM =  find_closest(logM_coarse, logM_guess)
 iR = find_closest(R_coarse, R_guess)
+logZ_data = logZ_coarse[ilogZ]
+logM_data = logM_coarse[ilogM]
+R_data = R_coarse[iR]
 
 for i in range(100):
     xi_data = xi_mock_array[ilogM, iR, ilogZ, i, :].flatten()
+    xi_mask = np.ones_like(xi_data, dtype=bool)
     init_out = logM_data, R_data, logZ_data, xi_data, xi_mask
     lnlike_fine_cov, logM_fine_cov, R_fine_cov, logZ_fine_cov = CIV_lya.interp_likelihood_inference_test(init_out, nlogM, nR, nlogZ, covar_path, nproc=nproc)
     lnlike_fine.append(lnlike_fine_cov)
