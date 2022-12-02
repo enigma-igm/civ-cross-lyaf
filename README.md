@@ -30,4 +30,4 @@ Each CIV_lya_correlation.py script needs to run with the civ-cross-lyaf branch i
 
 (2) plot the wanted result in custom way.
 
-For more information, please contact [Xin Sheng](xinsheng@ucsb.edu)
+For more information, please contact Xin Sheng(xinsheng@ucsb.edu)
