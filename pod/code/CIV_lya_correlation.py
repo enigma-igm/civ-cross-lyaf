@@ -79,13 +79,6 @@ def xi_sum_CIV_lya(ind, dist, delta_f_CIV, delta_f_lya , gpm,v_lo, v_hi, nskew, 
 
 def compute_xi_all_CIV_lya(params_CIV, skewers_CIV, params_lya, skewers_lya, logZ, fwhm, metal_ion, vmin_corr, vmax_corr, dv_corr, snr=None, sampling=None, \
                    cgm_dict=None, metal_dndz_func=None, cgm_seed=None, want_hires=True, type = 'normal'):
-# '''
-# type: normal: calculate the cross-correlation between CIV and lya
-#       blue: calculate the cross-correlation between CIV blue line and lya
-#       red: calculate the cross-correlation between CIV red line and lya
-# '''
-    # similar as enigma.reion_forest.fig_corrfunc.py
-    # if sampling not provided, then default to sampling=3
 
     vel_lores_CIV, (flux_lores_tot_CIV, flux_lores_igm_CIV, flux_lores_cgm_CIV), \
     vel_hires_CIV, (flux_hires_tot_CIV, flux_hires_igm_CIV, flux_hires_cgm_CIV), \
@@ -96,19 +89,6 @@ def compute_xi_all_CIV_lya(params_CIV, skewers_CIV, params_lya, skewers_lya, log
     vel_hires_lya, (flux_hires_tot_lya, flux_hires_igm_lya, flux_hires_cgm_lya), \
     (oden_lya, T_lya, x_metal_lya), cgm_tup_lya, tau_igm_lya = create_lya_forest(params_lya, skewers_lya, fwhm, sampling=sampling)
 
-# test only
-
-    # vel_lores_CIV, (flux_lores_tot_CIV, flux_lores_igm_CIV, flux_lores_cgm_CIV), \
-    # vel_hires_CIV, (flux_hires_tot_CIV, flux_hires_igm_CIV, flux_hires_cgm_CIV), \
-    # (oden_CIV, v_los_CIV, T_lya,x_metal_CIV), cgm_tup_CIV = reion_utils.create_metal_forest(params_CIV, skewers_CIV, logZ, fwhm, metal_ion, sampling=sampling, \
-    #                                                                       cgm_dict=cgm_dict, metal_dndz_func=metal_dndz_func, seed=cgm_seed)
-    #
-    # vel_lores_lya, (flux_lores_tot_lya, flux_lores_igm_lya, flux_lores_cgm_lya), \
-    # vel_hires_lya, (flux_hires_tot_lya, flux_hires_igm_lya, flux_hires_cgm_lya), \
-    # (oden_lya, v_los_lya, T_lya, x_metal_lya),cgm_tup_CIV = reion_utils.create_metal_forest(params_CIV, skewers_CIV, logZ, fwhm, metal_ion, sampling=sampling, \
-    #                                                                       cgm_dict=cgm_dict, metal_dndz_func=metal_dndz_func, seed=cgm_seed)
-
-    # Compute mean flux and delta_flux
     mean_flux_tot_CIV = np.mean(flux_hires_tot_CIV)
     delta_f_tot_CIV = (flux_hires_tot_CIV - mean_flux_tot_CIV)/mean_flux_tot_CIV
     print('mean flux of CIV:', mean_flux_tot_CIV)
@@ -128,13 +108,8 @@ def compute_xi_all_CIV_lya(params_CIV, skewers_CIV, params_lya, skewers_lya, log
 
 def compute_xi_all_CIV_CIV(params_1, skewers_1, params_2, skewers_2, logZ, fwhm, metal_ion, vmin_corr, vmax_corr, dv_corr, snr = None, sampling=None, \
                    cgm_dict=None, metal_dndz_func=None, cgm_seed=None, want_hires=True, type='normal'):
-# '''
-# type: normal: calculate the auto-correlation of CIV
-#       red: calculate the auto-correlation of CIV red and red
-#       blue: calculate the auto-correlation of CIV blue and blue
-# '''
-    # similar as enigma.reion_forest.fig_corrfunc.py
-    # if sampling not provided, then default to sampling=3
+
+#### compute the auto_correlation
 
     vel_lores_1, (flux_lores_tot_1, flux_lores_igm_1, flux_lores_cgm_1), \
     vel_hires_1, (flux_hires_tot_1, flux_hires_igm_1, flux_hires_cgm_1), \
@@ -165,13 +140,13 @@ def compute_xi_all_CIV_CIV(params_1, skewers_1, params_2, skewers_2, logZ, fwhm,
 
 
 def compute_xi_CIV_lya(delta_f_in_CIV, delta_f_in_lya, vel_spec_CIV, vel_spec_lya, vmin, vmax, dv, gpm=None, progress=False):
-    """
 
+    """
     Args:
-        delta_f_in (float ndarray), shape (nskew, nspec) or (nspec,):
-            Flux contrast array
-        vel_spec (float ndarray): shape (nspec,)
-            Velocities for flux contrast
+        delta_f_in_CIV, delta_f_in_lya (float ndarray), shape (nskew, nspec) or (nspec,):
+            Flux contrast array for CIV and lya
+        vel_spec_CIV and vel_spec_lya (float ndarray): shape (nspec,)
+            Velocities for flux contrast for CIV and lya
         vmin (float):
             Minimum velocity for correlation function velocity grid. This should be a positive number that shold not
             be set to zero, since we deal with the zero lag velocity correlation function separately.
@@ -247,13 +222,13 @@ def compute_xi_CIV_lya(delta_f_in_CIV, delta_f_in_lya, vel_spec_CIV, vel_spec_ly
     return (v_mid, xi, npix, xi_zero_lag)
 
 def compute_xi_CIV_lya_double_bin(delta_f_in_CIV, delta_f_in_lya, vel_spec_CIV, vel_spec_lya, vmin, vmax, dv1, dv2, v_end, gpm=None, progress=False):
-    """
 
+    """
     Args:
-        delta_f_in (float ndarray), shape (nskew, nspec) or (nspec,):
-            Flux contrast array
-        vel_spec (float ndarray): shape (nspec,)
-            Velocities for flux contrast
+        delta_f_in_CIV, delta_f_in_lya (float ndarray), shape (nskew, nspec) or (nspec,):
+            Flux contrast array for CIV and lya
+        vel_spec_CIV and vel_spec_lya (float ndarray): shape (nspec,)
+            Velocities for flux contrast for CIV and lya
         vmin (float):
             Minimum velocity for correlation function velocity grid. This should be a positive number that shold not
             be set to zero, since we deal with the zero lag velocity correlation function separately.
@@ -282,7 +257,6 @@ def compute_xi_CIV_lya_double_bin(delta_f_in_CIV, delta_f_in_lya, vel_spec_CIV, 
              The zero lage correlation function of each input skewer.
 
     """
-
     # This deals with the case where the input delta_f is a single spectrum
     if(len(delta_f_in_CIV.shape)==1):
         delta_f_CIV = delta_f_in_CIV.reshape(1,delta_f_in_CIV.size)
@@ -334,8 +308,7 @@ def compute_xi_CIV_lya_double_bin(delta_f_in_CIV, delta_f_in_lya, vel_spec_CIV, 
 
 def create_lya_forest(params, skewers, logZ, fwhm, metal_ion='C IV', z=None, sampling=3.0, cgm_dict=None, seed=None):
     """
-        Generate lya line forest, with the option to include CGM absorbers.
-
+        Generate lya line forest.
         Args:
             params (astropy table)
             skewers (astropy table)
@@ -396,15 +369,6 @@ def create_lya_forest(params, skewers, logZ, fwhm, metal_ion='C IV', z=None, sam
     tau_plot = tau_igm[:,iobs_hires]
     # tau_igm: total tau is the sum of the red and blue tau's
 
-    # Now generate the CGM
-    # if cgm_dict != None:
-    #     # tau_cgm, logN_draws, b_draws, v_draws, W_2796_draws, iskew_abs, tau_draws = create_mgii_cgm(vel_pad, nskew, z, cgm_dict, rand=rand)
-    #     tau_cgm, logN_draws, b_draws, v_draws, W_blue_draws, iskew_abs, tau_draws = create_metal_cgm(vel_pad, nskew, z, cgm_dict, metal_dndz_func, metal_ion=metal_ion, seed=seed)
-    #
-    #     # Only pass back the draws that reside in the final velocity coverage (as determined by vel_lores)
-    #     ikeep = (v_draws > vel_lores.min()) & (v_draws < vel_lores.max())
-    #     cgm_tuple = (logN_draws[ikeep], b_draws[ikeep], v_draws[ikeep], W_blue_draws[ikeep], iskew_abs[ikeep], tau_draws[ikeep, :])
-    # else:
     tau_cgm = np.zeros_like(tau_igm)
     cgm_tuple = None
 
@@ -746,90 +710,6 @@ def create_metal_forest_short(params, skewers, logZ, fwhm, metal_ion, z=None, sa
 
     return vel_lores, flux_tot_lores
 
-#
-# def interp_likelihood_covar_nproc(init_out, nlogM_fine, nR_fine, nlogZ_fine, interp_lnlike=True, interp_ximodel=False, nproc=None):
-#
-#     # ~10 sec to interpolate 3d likelihood for nlogM_fine, nR_fine, nlogZ_fine = 251, 201, 161
-#     # dlogM_fine 0.01
-#     # dR 0.015
-#     # dlogZ_fine 0.015625
-#
-#     # unpack input
-#     logM_coarse, R_coarse, logZ_coarse, logM_data, R_data, logZ_data, xi_data, xi_mask, xi_model_array, \
-#     covar_array, icovar_array, lndet_array, vel_corr, logM_guess, R_guess, logZ_guess = init_out
-#
-#     # Interpolate the likelihood onto a fine grid to speed up the MCMC
-#
-#     nlogM = logM_coarse.size
-#     logM_fine_min = logM_coarse.min()
-#     logM_fine_max = logM_coarse.max()
-#     dlogM_fine = (logM_fine_max - logM_fine_min) / (nlogM_fine - 1)
-#     logM_fine = logM_fine_min + np.arange(nlogM_fine) * dlogM_fine
-#
-#     nR = R_coarse.size
-#     R_fine_min = R_coarse.min()
-#     R_fine_max = R_coarse.max()
-#     dR_fine = (R_fine_max - R_fine_min) / (nR_fine - 1)
-#     R_fine = R_fine_min + np.arange(nR_fine) * dR_fine
-#
-#     nlogZ = logZ_coarse.size
-#     logZ_fine_min = logZ_coarse.min()
-#     logZ_fine_max = logZ_coarse.max()
-#     dlogZ_fine = (logZ_fine_max - logZ_fine_min) / (nlogZ_fine - 1)
-#     logZ_fine = logZ_fine_min + np.arange(nlogZ_fine) * dlogZ_fine
-#
-#     print('dlogM_fine', dlogM_fine)
-#     print('%0.2f' %dR_fine)
-#     print('dlogZ_fine', dlogZ_fine)
-#
-#     xi_model_fine, lndet_array_fine, covar_array_fine = inference.interp_model_all(logM_fine, R_fine, \
-#     logZ_fine, logM_coarse, R_coarse, logZ_coarse, xi_model_array, lndet_array, covar_array)
-#
-#     # Loop over the coarse grid and evaluate the likelihood at each location for the chosen mock data
-#     # Needs to be repeated for each chosen mock data
-#
-#
-#     lnlike_coarse = np.zeros((nlogM, nR, nlogZ))
-#     for ilogM, logM_val in enumerate(logM_coarse):
-#         for iR, R_val in enumerate(R_coarse):
-#             for ilogZ, logZ_val in enumerate(logZ_coarse):
-#                 lnlike_coarse[ilogM, iR, ilogZ] = inference.lnlike_calc(xi_data, xi_mask,
-#                                                                         xi_model_array[ilogM, iR, ilogZ, :],
-#                                                                         lndet_array[ilogM, iR, ilogZ],
-#                                                                         covar_array[ilogM, iR, ilogZ, :, :])
-#
-#     if nproc != None:
-#         lnlike_fine = np.zeros((nlogM_fine, nR_fine, nlogZ_fine))
-#         all_args = []
-#         for ilogM, logM_val in enumerate(logM_fine):
-#             for iR, R_val in enumerate(R_fine):
-#                 for ilogZ, logZ_val in enumerate(logZ_fine):
-#                     itup = (ilogM, iR, ilogZ, xi_data, xi_mask, xi_model_fine[ilogM, iR, ilogZ, :], lndet_array_fine[ilogM, iR, ilogZ], covar_array_fine[ilogM, iR, ilogZ, :, :])
-#                     all_args.append(itup)
-#         output = imap_unordered_bar(lnlike_calc_nproc, all_args, nproc)
-#         for out in output:
-#             ilogM, iR, ilogZ, lnL = out
-#             lnlike_fine[ilogM, iR, ilogZ] = lnL
-#
-#     else:
-#         lnlike_fine = np.zeros((nlogM_fine, nR_fine, nlogZ_fine))
-#         for ilogM, logM_val in enumerate(logM_fine):
-#             for iR, R_val in enumerate(R_fine):
-#                 for ilogZ, logZ_val in enumerate(logZ_fine):
-#                     lnlike_fine[ilogM, iR, ilogZ] = lnlike_calc(xi_data, xi_mask,
-#                                                                             xi_model_fine[ilogM, iR, ilogZ, :],
-#                                                                             lndet_array_fine[ilogM, iR, ilogZ],
-#                                                                             covar_array_fine[ilogM, iR, ilogZ, :, :])
-#
-#     logM_max, R_max, logZ_max = np.where(lnlike_fine==lnlike_fine.max())
-#
-#     print('The most possible grid in fine_cov is logM = %.2f, R = %.2f and logZ = %.2f' % (logM_fine[logM_max], R_fine[R_max], logZ_fine[logZ_max]))
-#
-#     logM_max, R_max, logZ_max = np.where(lnlike_coarse==lnlike_coarse.max())
-#
-#     print('The most possible grid in coarse is logM = %.2f, R = %.2f and logZ = %.2f' % (logM_coarse[logM_max], R_coarse[R_max], logZ_coarse[logZ_max]))
-#
-#     return lnlike_coarse, lnlike_fine, xi_model_fine, logM_fine, R_fine, logZ_fine
 
 def imap_unordered_bar(func, args, nproc):
     """
@@ -845,16 +725,6 @@ def imap_unordered_bar(func, args, nproc):
     p.close()
     p.join()
     return res_list
-
-# def lnlike_calc_nproc(args):
-#
-#     ilogM, iR, ilogZ, xi_data, xi_mask, xi_model, lndet, covar = args
-#     ndim = xi_data.shape[0]
-#     diff = xi_mask*(xi_data - xi_model)
-#     lnL = -(np.dot(diff,np.linalg.solve(covar, diff)) + lndet + ndim*np.log(2.0*np.pi))/2.0
-#
-#     return ilogM, iR, ilogZ, lnL
-
 
 def interp_likelihood_covar_nproc(init_out, nlogM_fine, nR_fine, nlogZ_fine, nproc=5, interpolate_covar=True):
 
