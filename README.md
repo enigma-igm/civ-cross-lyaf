@@ -40,6 +40,8 @@ The 'present' folder contains some of the representative figures, including:
 
 (3) Covariance matrix and probability distribution.
 
+Most of the results are unpublished, and will be available after the publication. 
+
 ## More info
 
 For more information, please contact Xin Sheng(xinsheng@ucsb.edu)
