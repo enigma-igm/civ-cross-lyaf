@@ -24,10 +24,10 @@ Each folder contains CIV_lya_correlation.py, which is the main script of the pro
 
 (6) Do an inference test.
 
-Each CIV_lya_correlation.py script needs to run with the civ-cross-lyaf branch in enigma and CIV_forest. The other scripts in the folders are mainly used to help the running of the script, including:
+Each CIV_lya_correlation.py script needs to run with the civ-cross-lyaf branch in enigma and CIV_forest. The other scripts in the folders contain additional function, including:
 
 (1) Generate the mock data set;
 
-(2) plot the wanted result in custom way.
+(2) Plot the wanted result in custom way.
 
 For more information, please contact Xin Sheng(xinsheng@ucsb.edu)
