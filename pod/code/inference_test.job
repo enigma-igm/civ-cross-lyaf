@@ -3,7 +3,7 @@
 #SBATCH --partition batch
 #SBATCH --output /home/xinsheng/enigma/log/inference_test.log
 
-#SBATCH --ntasks 50
+#SBATCH --ntasks 100
 #SBATCH --ntasks-per-core 1
 #--overcommit
 
@@ -14,7 +14,7 @@
 #--sockets-per-node 2
 #--exclusive
 
-#SBATCH --time 50:00:00
+#SBATCH --time 100:00:00
 #SBATCH --mail-user xinsheng@ucsb.edu
 #SBATCH --mail-type ALL
 
