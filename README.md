@@ -8,7 +8,7 @@ pod: scripts that on [pod cluster in UCSB CSC](https://csc.cnsi.ucsb.edu/)
 
 igm: scripts that on [igm cluster in ENIGMA](http://enigma.physics.ucsb.edu/)
 
-code: scripts that on my own computer
+code: scripts that on local computer
 
 The major differences are the path. Each folder contains CIV_lya_correlation.py, which is the main script of the project. It enables to:
 
